@@ -53,11 +53,14 @@ def make_handler(searcher: Searcher, originals: list[Path], llm_model: str | Non
                 langs = [x for x in g("lang").split(",") if x]
                 genres = [x for x in g("genre").split("|") if x]
                 r = searcher.search(g("q"), k=int(g("k", "10")), languages=langs or None,
-                                    genres=genres or None, strict=g("strict", "1") != "0", topic=g("topic") or None)
+                                    genres=genres or None, strict=g("strict", "1") != "0", topic=g("topic") or None,
+                                    profile=g("profile") or None)
                 if gap_log:
                     gaps.log_unanswered(gap_log, r, searcher.library_version,
                                         {k: v for k, v in (("lang", langs), ("genre", genres)) if v})
                 return self._json(r)
+            if u.path == "/api/profiles":
+                return self._json({"profiles": list(searcher.profiles.values())})
             if u.path == "/api/topics":
                 return self._json({"topics": searcher.topics()})
             if u.path == "/api/info":
@@ -95,6 +98,7 @@ def main():
     ap.add_argument("--index", default="build/index.db")
     ap.add_argument("--glossary", default="data/glossary.csv")
     ap.add_argument("--abbrev", default="data/abbreviations.csv", help='"" to disable')
+    ap.add_argument("--profiles", default="data/profiles.json")
     ap.add_argument("--originals", default=None, help="optional folder with original PDF/HTML files")
     ap.add_argument("--inbox", default="data/inbox", help="photos digitised into Field Note docs (served as originals)")
     ap.add_argument("--qvec-model", default="models/potion-multilingual-128M",
@@ -118,7 +122,8 @@ def main():
             qvec = QVecIndex.load(str(Path(a.index).parent), a.qvec_model, a.qvec_threshold)
         except ImportError:
             pass
-    s = Searcher(a.index, a.glossary, dense=dense, abbreviations_path=a.abbrev, qvec=qvec)
+    s = Searcher(a.index, a.glossary, dense=dense, abbreviations_path=a.abbrev, qvec=qvec,
+                 profiles_path=a.profiles)
     print("question vectors:", f"on ({len(qvec.chunk_ids)} vectors)" if qvec else "off")
     orig = [Path(f) for f in (a.originals, a.inbox) if f and Path(f).is_dir()]
     print(f"MSF library: {s.n_docs} documents. Open http://localhost:{a.port}")

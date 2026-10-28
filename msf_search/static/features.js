@@ -170,13 +170,42 @@
   window.MSFFeatures.lastSearch = () => LAST;
 
   /* topic chips: browse a topic (empty search box) or narrow the current query */
-  let TOPIC = "";
+  let TOPIC = "", PROFILE = "";
+  try { PROFILE = localStorage.getItem("msf-profile") || ""; } catch (e) {}
   const _fetch2 = window.fetch;
   window.fetch = function (url, opts) {
-    if (TOPIC && typeof url === "string" && url.startsWith("/api/search") && !url.includes("topic="))
-      url += "&topic=" + encodeURIComponent(TOPIC);
+    if (typeof url === "string" && url.startsWith("/api/search")) {
+      if (TOPIC && !url.includes("topic=")) url += "&topic=" + encodeURIComponent(TOPIC);
+      if (PROFILE && !url.includes("profile=")) url += "&profile=" + encodeURIComponent(PROFILE);
+    }
     return _fetch2(url, opts);
   };
+  /* field profile: boosts, never filters; one click turns it off */
+  const filters = document.querySelectorAll(".filters")[1];
+  if (filters) {
+    _fetch("/api/profiles").then(r => r.json()).then(({profiles}) => {
+      const box = document.createElement("span");
+      box.innerHTML = renderProfilePicker(profiles, PROFILE);
+      filters.insertBefore(box, filters.lastElementChild);
+      box.addEventListener("change", e => {
+        PROFILE = e.target.value;
+        try { localStorage.setItem("msf-profile", PROFILE); } catch (err) {}
+        const q = document.getElementById("q");
+        if (q && q.value.trim()) document.getElementById("f").requestSubmit();
+      });
+    }).catch(() => {});
+    new MutationObserver(() => {
+      const r = LAST;
+      if (!out || out.querySelector(".fx-boost") || !r || !r.profile || !r.profile.boosted) return;
+      out.insertAdjacentHTML("afterbegin", `<div class="fx-boost">Boosted for your profile: ${esc(r.profile.label)} (${r.profile.boosted} results) · <a href="#" id="fx-boost-off">turn off</a></div>`);
+      document.getElementById("fx-boost-off").onclick = ev => {
+        ev.preventDefault(); PROFILE = "";
+        try { localStorage.removeItem("msf-profile"); } catch (err) {}
+        const sel = document.getElementById("fx-profile"); if (sel) sel.value = "";
+        document.getElementById("f").requestSubmit();
+      };
+    }).observe(out, {childList: true});
+  }
   async function browseTopic() {
     const r = await (await window.fetch("/api/search?q=&k=20")).json();
     out.innerHTML = `<div class="meta">${r.results.length} documents · topic <b>${esc(TOPIC)}</b> · ordered by importance, evidence tier, aboutness · ${r.ms} ms</div>`

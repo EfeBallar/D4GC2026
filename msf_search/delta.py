@@ -27,7 +27,19 @@ def _attach_uri(path: str) -> str:
     return Path(path).resolve().as_uri() + "?mode=ro"
 
 
-def make_delta(index_path: str, doc_ids: list[str], out_path: str, version: str | None = None) -> dict:
+URGENCY = ["normal", "high", "critical"]
+
+
+def urgency(genre: str, topics: list, site_topics: set) -> str:
+    """Clinical guidelines are critical; a site's profile topics raise a doc by one level."""
+    level = 2 if genre == "Clinical Guideline Chapter" else 0
+    if site_topics & set(topics):
+        level = min(2, level + 1)
+    return URGENCY[level]
+
+
+def make_delta(index_path: str, doc_ids: list[str], out_path: str, version: str | None = None,
+               site_topics: set | None = None) -> dict:
     version = version or time.strftime("%Y-%m-%d-%H%M")
     src = _connect(index_path, readonly=True)
     found = {r[0] for r in src.execute(
@@ -56,15 +68,18 @@ def make_delta(index_path: str, doc_ids: list[str], out_path: str, version: str 
                     [(d, o, *fts_row(titles[d][0], h, zlib.decompress(t).decode("utf-8"), titles[d][1]))
                      for d, o, h, t in con.execute("SELECT doc_id, ord, heading, text FROM chunks").fetchall()])
     n_chunks = con.execute("SELECT count(*) FROM chunks").fetchone()[0]
+    urg = {d: urgency(g, json.loads(t or "[]") + json.loads(gt or "[]"), site_topics or set())
+           for d, g, t, gt in con.execute("SELECT id, genre, topics, glossary_topics FROM docs")}
     con.execute("CREATE TABLE meta(key TEXT PRIMARY KEY, value TEXT)")
     con.executemany("INSERT INTO meta VALUES (?,?)", [
         ("version", version), ("created_at", time.strftime("%Y-%m-%d %H:%M:%S")),
-        ("doc_ids", json.dumps(sorted(found))), ("source_library_version", src_version)])
+        ("doc_ids", json.dumps(sorted(found))), ("source_library_version", src_version),
+        ("urgency", json.dumps(urg))])
     con.commit()
     con.execute("DETACH src")
     con.execute("VACUUM")
     con.close()
-    return {"version": version, "path": str(out), "docs": len(found), "chunks": n_chunks,
+    return {"version": version, "path": str(out), "docs": len(found), "chunks": n_chunks, "urgency": urg,
             "kb": round(out.stat().st_size / 1024, 1)}
 
 
@@ -114,7 +129,10 @@ def apply_delta(index_path: str, delta_path: str) -> dict:
                          "Rebuild the field index with the same code version.")
     added = replaced = n_chunks = 0
     with con:  # one transaction: all of the delta, or none of it
-        for (doc_id,) in con.execute("SELECT id FROM u.docs").fetchall():
+        urg = json.loads((con.execute("SELECT value FROM u.meta WHERE key='urgency'").fetchone() or ["{}"])[0])
+        order = sorted((r[0] for r in con.execute("SELECT id FROM u.docs")),  # critical first
+                       key=lambda d: -URGENCY.index(urg.get(d, "normal")))
+        for doc_id in order:
             if _remove_doc(con, doc_id):
                 replaced += 1
             else:

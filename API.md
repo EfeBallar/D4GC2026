@@ -65,6 +65,18 @@ results add `topic_share`). Responses echo `"topic"`.
  "reason": "", "ms": 2.6}
 ```
 
+## GET /api/profiles (v2 step 6)
+Field profiles from `data/profiles.json` (situation presets; country and topics editable). A profile BOOSTS,
+never filters: score × (1 + 0.15 per matching topic (max 3) + 0.10 for a preferred language), after the gate.
+```json
+{"profiles": [{"id": "nurse_cholera_outbreak", "label": "Nurse · cholera outbreak", "situation": "outbreak",
+               "country": "", "topics": ["cholera", "diarrhoea", ...], "languages": ["en", "fr"]}, ...]}
+```
+Use with `/api/search?...&profile=<id>`: results get `profile_boost` (e.g. 0.4) and the response gets
+`"profile": {"id", "label", "boosted": 10}`. UI: "Boosted for your profile (turn off)".
+Delta updates: `make_delta.py --site-profile <id>` raises the urgency of docs on that site's topics
+(normal -> high -> critical; clinical guidelines are critical); `apply_delta.py` applies critical first.
+
 ## GET /api/topics (v2 step 4)
 Topics = HQ enrichment topics ∪ curated glossary concepts a doc mentions ≥ 3 times (works without any LLM).
 ```json

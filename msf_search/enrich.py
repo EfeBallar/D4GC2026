@@ -188,9 +188,10 @@ def _quota(qa: list) -> list:
     return keep + [q for q in qa if q not in keep][:max(0, 8 - len(keep))]
 
 
-def enrich_doc(llm: LLM, doc) -> dict:
+def enrich_doc(llm: LLM, doc, long_doc: int = 6000) -> dict:
+    """long_doc: word count above which the doc is split into windows (lower it for small local contexts)."""
     t0 = time.time()
-    wins = windows(doc.text)
+    wins = windows(doc.text, long_doc=long_doc)
     parts = []
     for i, w in enumerate(wins):
         tag = f" | part {i + 1} of {len(wins)} of a long document" if len(wins) > 1 else ""

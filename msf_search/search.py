@@ -71,7 +71,7 @@ class Concept:
 
 class Searcher:
     def __init__(self, index_path: str, glossary_path: str | None = None, dense=None,
-                 abbreviations_path: str | None = None, qvec=None):
+                 abbreviations_path: str | None = None, qvec=None, profiles_path: str | None = None):
         self.index_path = index_path
         self.con = sqlite3.connect(f"file:{index_path}?mode=ro", uri=True, check_same_thread=False)
         self.glossary = Glossary(glossary_path)
@@ -79,6 +79,8 @@ class Searcher:
             self.glossary.load_abbreviations(abbreviations_path)
         self.dense = dense
         self.qvec = qvec  # optional HyDE question vectors (qvec.py)
+        self.profiles = {x["id"]: x for x in json.loads(Path(profiles_path).read_text(encoding="utf-8"))["profiles"]} \
+            if profiles_path and Path(profiles_path).exists() else {}
         self._data_version = None
         self.refresh()
         row = self.con.execute("SELECT value FROM meta WHERE key='llm_abbreviations'").fetchone()
@@ -147,6 +149,11 @@ class Searcher:
         return {r[0] for r in rows}, per_doc
 
     # ---------- main entry ----------
+    @staticmethod
+    def _profile_boost(prof: dict, meta: dict) -> float:
+        n_topics = min(3, len(set(prof["topics"]) & set(meta["topics"])))
+        return round(0.15 * n_topics + (0.10 if meta["language"] in prof.get("languages", []) else 0.0), 2)
+
     def importance_distribution(self) -> dict:
         """{"1": n, ...} over enriched docs; the UI hides the badge while it cannot discriminate."""
         out = {}
@@ -199,7 +206,8 @@ class Searcher:
                 "ms": round((time.perf_counter() - t0) * 1000, 1)}
 
     def search(self, query: str, k: int = 10, languages: list | None = None, genres: list | None = None,
-               strict: bool = True, candidates: int = 400, topic: str | None = None) -> dict:
+               strict: bool = True, candidates: int = 400, topic: str | None = None,
+               profile: str | None = None) -> dict:
         if topic and not (query or "").strip():
             return self.browse(topic, k, languages, genres)
         t0 = time.perf_counter()
@@ -309,8 +317,14 @@ class Searcher:
         weaker = [r for r in results if r["confidence"] == "low"]
         if strict:
             results = [r for r in results if r["confidence"] != "low"]
-        for r in results:  # importance prior, after the gate
+        prof = self.profiles.get(profile) if profile else None
+        for r in results:  # importance prior and profile boost, after the gate (they reorder, never filter)
             r["score"] = round(r["score"] * IMPORTANCE_PRIOR.get(self.docs[r["doc_id"]]["importance"], 1.0), 4)
+            if prof:
+                r["profile_boost"] = self._profile_boost(prof, self.docs[r["doc_id"]])
+                r["score"] = round(r["score"] * (1 + r["profile_boost"]), 4)
+                if "rrf" in r:
+                    r["rrf"] = round(r["rrf"] * (1 + r["profile_boost"]), 6)
         results.sort(key=lambda r: (tier[r["confidence"]], -r.get("rrf", 0), -r["score"]))
         results = results[:k]
         for r in results + weaker[:3]:
@@ -323,6 +337,8 @@ class Searcher:
                 "unknown_terms": unknown, "results": results,
                 "weaker_matches": weaker[:3] if strict else [],
                 "quick_answer": self._quick_answer(results[0]) if results and results[0]["matched_via"] == "qa" else None,
+                "profile": {"id": prof["id"], "label": prof["label"],
+                            "boosted": sum(1 for r in results if r.get("profile_boost"))} if prof else None,
                 "abstained": not results,
                 "reason": "" if results else "no document covers enough of the query",
                 "ms": ms}

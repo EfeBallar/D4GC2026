@@ -21,6 +21,7 @@ ap.add_argument("--transcriptions", default=str(ROOT / "data/transcriptions"))
 ap.add_argument("--inbox", default=str(ROOT / "data/inbox"))
 ap.add_argument("--out", default=str(ROOT / "data/enrichment.jsonl"))
 ap.add_argument("--workers", type=int, default=16)
+ap.add_argument("--long-doc", type=int, default=6000, help="split docs longer than this (words); ~3000 for a 12k-token local context")
 ap.add_argument("--limit", type=int, default=0, help="only the first N documents in priority order")
 ap.add_argument("--ids", default="", help="comma-separated ids to enrich")
 ap.add_argument("--sample", action="store_true", help="the demo sample (DEMO_SAMPLE) instead of the whole collection")
@@ -52,7 +53,7 @@ print(f"{len(docs)} searchable docs, {len(done)} already enriched, {len(todo)} t
 lock, stats, t0 = threading.Lock(), Counter(), time.time()
 out = open(a.out, "a", encoding="utf-8")
 with ThreadPoolExecutor(max_workers=a.workers) as pool:
-    futs = {pool.submit(enrich_doc, llm, d): d for d in todo}
+    futs = {pool.submit(enrich_doc, llm, d, a.long_doc): d for d in todo}
     for f in as_completed(futs):
         d = futs[f]
         try:
