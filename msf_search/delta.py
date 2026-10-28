@@ -50,10 +50,10 @@ def make_delta(index_path: str, doc_ids: list[str], out_path: str, version: str 
     ccols = ",".join(r[1] for r in con.execute("PRAGMA src.table_info(chunks)") if r[1] != "id")
     con.execute(f"CREATE TABLE chunks AS SELECT {ccols} FROM src.chunks "
                 f"WHERE doc_id IN ({marks}) ORDER BY doc_id, ord", doc_ids)
-    con.execute("CREATE TABLE chunks_fts_rows(doc_id TEXT, ord INTEGER, title TEXT, heading TEXT, body TEXT)")
-    titles = dict(con.execute("SELECT id, title FROM docs"))
-    con.executemany("INSERT INTO chunks_fts_rows VALUES (?,?,?,?,?)",
-                    [(d, o, *fts_row(titles[d], h, zlib.decompress(t).decode("utf-8")))
+    con.execute("CREATE TABLE chunks_fts_rows(doc_id TEXT, ord INTEGER, title TEXT, heading TEXT, body TEXT, enrich TEXT)")
+    titles = {d: (t, e or "") for d, t, e in con.execute("SELECT id, title, enrich_terms FROM docs")}
+    con.executemany("INSERT INTO chunks_fts_rows VALUES (?,?,?,?,?,?)",
+                    [(d, o, *fts_row(titles[d][0], h, zlib.decompress(t).decode("utf-8"), titles[d][1]))
                      for d, o, h, t in con.execute("SELECT doc_id, ord, heading, text FROM chunks").fetchall()])
     n_chunks = con.execute("SELECT count(*) FROM chunks").fetchone()[0]
     con.execute("CREATE TABLE meta(key TEXT PRIMARY KEY, value TEXT)")
@@ -69,13 +69,13 @@ def make_delta(index_path: str, doc_ids: list[str], out_path: str, version: str 
 
 
 def _remove_doc(con: sqlite3.Connection, doc_id: str) -> bool:
-    row = con.execute("SELECT title FROM docs WHERE id=?", (doc_id,)).fetchone()
+    row = con.execute("SELECT title, enrich_terms FROM docs WHERE id=?", (doc_id,)).fetchone()
     if not row:
         return False
     for cid, heading, text in con.execute(
             "SELECT id, heading, text FROM chunks WHERE doc_id=?", (doc_id,)).fetchall():
-        con.execute("INSERT INTO chunks_fts(chunks_fts, rowid, title, heading, body) VALUES ('delete',?,?,?,?)",
-                    (cid, *fts_row(row[0], heading, zlib.decompress(text).decode("utf-8"))))
+        con.execute("INSERT INTO chunks_fts(chunks_fts, rowid, title, heading, body, enrich) VALUES ('delete',?,?,?,?,?)",
+                    (cid, *fts_row(row[0], heading, zlib.decompress(text).decode("utf-8"), row[1] or "")))
     con.execute("DELETE FROM chunks WHERE doc_id=?", (doc_id,))
     con.execute("DELETE FROM docs WHERE id=?", (doc_id,))
     return True
@@ -122,11 +122,11 @@ def apply_delta(index_path: str, delta_path: str) -> dict:
         con.execute(f"INSERT INTO docs({','.join(cols)}) SELECT {','.join(cols)} FROM u.docs")
         ccols = [r[1] for r in con.execute("PRAGMA u.table_info(chunks)")]
         for row in con.execute(
-                f"SELECT {','.join('c.' + c for c in ccols)}, f.title, f.heading, f.body FROM u.chunks c "
+                f"SELECT {','.join('c.' + c for c in ccols)}, f.title, f.heading, f.body, f.enrich FROM u.chunks c "
                 "JOIN u.chunks_fts_rows f ON f.doc_id=c.doc_id AND f.ord=c.ord ORDER BY c.doc_id, c.ord").fetchall():
             cur = con.execute(f"INSERT INTO chunks({','.join(ccols)}) VALUES ({','.join('?' * len(ccols))})",
                               row[:len(ccols)])
-            con.execute("INSERT INTO chunks_fts(rowid, title, heading, body) VALUES (?,?,?,?)",
+            con.execute("INSERT INTO chunks_fts(rowid, title, heading, body, enrich) VALUES (?,?,?,?,?)",
                         (cur.lastrowid, *row[len(ccols):]))
             n_chunks += 1
         applied.append(version)

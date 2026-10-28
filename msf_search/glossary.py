@@ -8,7 +8,7 @@ retraining, no vendor.
 import csv
 from pathlib import Path
 
-from .textnorm import tokenize
+from .textnorm import STOPWORDS, tokenize
 
 
 class Glossary:
@@ -35,6 +35,21 @@ class Glossary:
                 self.variants[concept] = vs
                 for v in vs:
                     self.phrase_to_concept.setdefault(v, concept)
+        self.max_len = max((len(p) for p in self.phrase_to_concept), default=1)
+
+    def add_abbreviations(self, mapping: dict):
+        """{abbr: [long forms]} from HQ enrichment (stored in index.db); same one-way rule as the CSV."""
+        for abbr, longs in mapping.items():
+            key = tuple(tokenize(abbr))
+            if not key or len(abbr) < 2 or key[0] in STOPWORDS:  # "WHO" must not hijack "who"
+                continue
+            concept = self.phrase_to_concept.get(key)
+            if concept is None:
+                concept = abbr
+                self.variants.setdefault(concept, [key])
+                self.phrase_to_concept[key] = concept
+            vs = self.variants[concept]
+            vs.extend(v for v in (tuple(tokenize(l)) for l in longs) if v and v not in vs)
         self.max_len = max((len(p) for p in self.phrase_to_concept), default=1)
 
     def load_abbreviations(self, path: str):
