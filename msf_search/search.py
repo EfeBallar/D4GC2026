@@ -104,12 +104,20 @@ class Searcher:
                              "summary": r[21], "topics": json.loads(r[22] or "[]"),
                              "countries": json.loads(r[23] or "[]"), "situation": r[24], "doc_type": r[25],
                              "superseded_hint": r[26],
-                             "summary_provenance": provenance("parsed", None, 1, "summary", r[27], r[28]) if r[21] else None}
+                             "summary_provenance": provenance("parsed", None, 1, "summary", r[27], r[28]) if r[21] else None,
+                             "glossary_topics": json.loads(r[29] or "[]")}
                      for r in self.con.execute(
                          "SELECT id, genre, language, title, quality, also_filed_as, original_name, n_chunks, year, transcribed, "
                          f"{PROVENANCE_COLS}, enriched, importance, importance_reason, audience, actionable, summary, "
-                         "topics, countries, situation, doc_type, superseded_hint, enrich_model, enrich_at FROM docs")}
+                         "topics, countries, situation, doc_type, superseded_hint, enrich_model, enrich_at, glossary_topics "
+                         "FROM docs")}
+        self.topic_docs = {}
         for meta in self.docs.values():
+            # topics = HQ enrichment topics + curated glossary concepts the doc mentions >= 3 times
+            meta["topics"] = list(dict.fromkeys(t.lower() for t in meta["topics"] + meta["glossary_topics"]))
+            if meta["n_chunks"]:
+                for tp in meta["topics"]:
+                    self.topic_docs.setdefault(tp, set()).add(meta["id"])
             label, rank, w = GENRE_TIER.get(meta["genre"], (DEFAULT_TIER[0], len(EVIDENCE_TIERS) + 1, DEFAULT_TIER[1]))
             meta.update({"tier": label, "tier_rank": rank, "prior": w})
 
@@ -138,10 +146,56 @@ class Searcher:
         return {r[0] for r in rows}, per_doc
 
     # ---------- main entry ----------
-    def search(self, query: str, k: int = 10, languages: list | None = None, genres: list | None = None,
-               strict: bool = True, candidates: int = 400) -> dict:
+    def topics(self, min_docs: int = 2) -> list[dict]:
+        out = [{"topic": tp, "count": len(ds), "enriched": sum(1 for d in ds if self.docs[d]["enriched"]),
+                "from_glossary": tp in self.glossary.variants}
+               for tp, ds in self.topic_docs.items() if len(ds) >= min_docs]
+        return sorted(out, key=lambda x: (-x["count"], x["topic"]))
+
+    def browse(self, topic: str, k: int = 20, languages: list | None = None, genres: list | None = None) -> dict:
+        """Topic chip without a query: importance -> evidence tier -> aboutness (share of matching passages)."""
         t0 = time.perf_counter()
         self.refresh()
+        allowed = [d for d in self.topic_docs.get(topic, set())
+                   if (not languages or self.docs[d]["language"] in languages)
+                   and (not genres or self.docs[d]["genre"] in genres)]
+        c = Concept(topic, list(self.glossary.variants.get(topic) or [tuple(tokenize(topic))]))
+        rows = self.con.execute("SELECT f.rowid, c.doc_id FROM chunks_fts f JOIN chunks c ON c.id=f.rowid "
+                                "WHERE chunks_fts MATCH ? ORDER BY bm25(chunks_fts, 4.0, 2.0, 1.0, 1.5)", (c.fts(),)).fetchall()
+        first, hits = {}, {}
+        for cid, did in rows:
+            first.setdefault(did, cid)
+            hits[did] = hits.get(did, 0) + 1
+        results = []
+        for did in allowed:
+            cid = first.get(did) or (self.con.execute("SELECT id FROM chunks WHERE doc_id=? ORDER BY ord LIMIT 1",
+                                                      (did,)).fetchone() or [None])[0]
+            if cid is None:
+                continue
+            share = hits.get(did, 0) / max(1, self.docs[did]["n_chunks"])  # uncapped, so browse order has no ties
+            about = min(1.0, 6.0 * share)
+            kind = self.con.execute("SELECT kind FROM chunks WHERE id=?", (cid,)).fetchone()[0] or "text"
+            results.append({"doc_id": did, "score": round(about, 4), "confidence": "high", "passage_coverage": None,
+                            "doc_coverage": None, "aboutness": round(about, 2), "chunk_id": cid, "matched_via": kind,
+                            "text_chunk_id": cid if kind == "text" else None, "topic_share": round(share, 3)})
+        results.sort(key=lambda r: (self.docs[r["doc_id"]]["importance"] or 3, self.docs[r["doc_id"]]["tier_rank"],
+                                    -r["topic_share"], r["doc_id"]))
+        results = results[:k]
+        for r in results:
+            self._decorate(r, [c])
+        return {"query": "", "topic": topic, "concepts": [{"label": topic, "weight": 1.0,
+                                                            "variants": [" ".join(v) for v in c.variants]}],
+                "unknown_terms": [], "results": results, "weaker_matches": [], "quick_answer": None,
+                "abstained": not results, "reason": "" if results else "no document with this topic",
+                "ms": round((time.perf_counter() - t0) * 1000, 1)}
+
+    def search(self, query: str, k: int = 10, languages: list | None = None, genres: list | None = None,
+               strict: bool = True, candidates: int = 400, topic: str | None = None) -> dict:
+        if topic and not (query or "").strip():
+            return self.browse(topic, k, languages, genres)
+        t0 = time.perf_counter()
+        self.refresh()
+        allowed = self.topic_docs.get(topic, set()) if topic else None
         concepts = self.parse(query)
         if not concepts:
             return {"query": query, "results": [], "abstained": True, "reason": "empty query", "ms": 0}
@@ -199,6 +253,8 @@ class Searcher:
                 continue
             if genres and meta["genre"] not in genres:
                 continue
+            if allowed is not None and did not in allowed:
+                continue
             ccov = sum(c.weight for c, cs in zip(concepts, chunk_sets) if cid in cs) / total_w
             s_lex = lex.get(cid, 0.0) / max_lex
             s = s_lex * (0.2 + 0.8 * ccov)
@@ -251,7 +307,7 @@ class Searcher:
 
         ms = round((time.perf_counter() - t0) * 1000, 1)
         unknown = [c.label for c in concepts if not getattr(c, "found", True)]
-        return {"query": query, "concepts": [{"label": c.label, "weight": round(c.weight, 2),
+        return {"query": query, "topic": topic, "concepts": [{"label": c.label, "weight": round(c.weight, 2),
                                               "variants": [" ".join(v) for v in c.variants]} for c in concepts],
                 "unknown_terms": unknown, "results": results,
                 "weaker_matches": weaker[:3] if strict else [],

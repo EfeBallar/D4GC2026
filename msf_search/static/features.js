@@ -159,4 +159,40 @@
     }).observe(out, {childList: true});
   }
   window.MSFFeatures.lastSearch = () => LAST;
+
+  /* topic chips: browse a topic (empty search box) or narrow the current query */
+  let TOPIC = "";
+  const _fetch2 = window.fetch;
+  window.fetch = function (url, opts) {
+    if (TOPIC && typeof url === "string" && url.startsWith("/api/search") && !url.includes("topic="))
+      url += "&topic=" + encodeURIComponent(TOPIC);
+    return _fetch2(url, opts);
+  };
+  async function browseTopic() {
+    const r = await (await window.fetch("/api/search?q=&k=20")).json();
+    out.innerHTML = `<div class="meta">${r.results.length} documents · topic <b>${esc(TOPIC)}</b> · ordered by importance, evidence tier, aboutness · ${r.ms} ms</div>`
+      + r.results.map(x => window.card(x)).join("");
+  }
+  const langs = document.getElementById("langs");
+  if (langs) {
+    _fetch("/api/topics").then(r => r.json()).then(({topics}) => {
+      const box = document.createElement("div");
+      box.id = "fx-topic-box";
+      const draw = () => { box.innerHTML = renderTopicChips(topics.slice(0, 24), TOPIC); };
+      const fromUrl = new URLSearchParams(location.search).get("topic");
+      if (fromUrl) { TOPIC = fromUrl; if (!new URLSearchParams(location.search).get("q")) browseTopic(); }
+      draw();
+      langs.insertAdjacentElement("afterend", box);
+      box.addEventListener("click", e => {
+        const b = e.target.closest("[data-topic]");
+        if (!b) return;
+        TOPIC = TOPIC === b.dataset.topic ? "" : b.dataset.topic;
+        draw();
+        const q = document.getElementById("q");
+        if (q && q.value.trim()) document.getElementById("f").requestSubmit();
+        else if (TOPIC) browseTopic();
+        else out.innerHTML = "";
+      });
+    }).catch(() => {});
+  }
 })();

@@ -53,11 +53,13 @@ def make_handler(searcher: Searcher, originals: list[Path], llm_model: str | Non
                 langs = [x for x in g("lang").split(",") if x]
                 genres = [x for x in g("genre").split("|") if x]
                 r = searcher.search(g("q"), k=int(g("k", "10")), languages=langs or None,
-                                    genres=genres or None, strict=g("strict", "1") != "0")
+                                    genres=genres or None, strict=g("strict", "1") != "0", topic=g("topic") or None)
                 if gap_log:
                     gaps.log_unanswered(gap_log, r, searcher.library_version,
                                         {k: v for k, v in (("lang", langs), ("genre", genres)) if v})
                 return self._json(r)
+            if u.path == "/api/topics":
+                return self._json({"topics": searcher.topics()})
             if u.path == "/api/info":
                 searcher.refresh()
                 return self._json({"report": searcher.report, "library_version": searcher.library_version,

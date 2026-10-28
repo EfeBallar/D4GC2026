@@ -22,8 +22,10 @@ UI rule: never show machine-made text without its label (see `static/features.js
 
 ## GET /api/search
 
-Query params: `q` (required), `k` (default 10), `lang` (comma list, e.g. `fr,es`), `genre` (`|` list),
-`strict` (`1` default: hide weak matches; `0` show them).
+Query params: `q`, `k` (default 10), `lang` (comma list, e.g. `fr,es`), `genre` (`|` list),
+`strict` (`1` default: hide weak matches; `0` show them), `topic` (v2 step 4: restrict to a topic; with an
+empty `q` it BROWSES the topic, ordered importance -> evidence tier -> share of matching passages; browse
+results add `topic_share`). Responses echo `"topic"`.
 
 ```json
 {"query": "Orissa cyclone",
@@ -61,6 +63,13 @@ Query params: `q` (required), `k` (default 10), `lang` (comma list, e.g. `fr,es`
  "abstained": false,                 // true = "No reliable match"
  "reason": "", "ms": 2.6}
 ```
+
+## GET /api/topics (v2 step 4)
+Topics = HQ enrichment topics ∪ curated glossary concepts a doc mentions ≥ 3 times (works without any LLM).
+```json
+{"topics": [{"topic": "malaria", "count": 54, "enriched": 1, "from_glossary": true}, ...]}
+```
+Each result also carries `topics` (merged) and `glossary_topics`.
 
 ## GET /api/doc/<id>
 Document metadata plus full `text`, including `provenance`.
