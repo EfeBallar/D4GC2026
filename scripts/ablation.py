@@ -49,7 +49,7 @@ for name, idx, qv, imp, size in configs:
         continue
     s = Searcher(str(idx), g, abbreviations_path=ab, qvec=qv, use_importance=imp)
     r = evalset.score(s, rows)
-    extra = " +13 KB vectors, +506 MB model" if qv else ""
+    extra = f" +{(B / 'qvec.npy').stat().st_size / 1024:.0f} KB vectors, +506 MB model" if qv else ""
     print(f"| {name:34} | {r['recall@5']:.3f} | {r['mrr']:.3f} | {r['false_positive_rate']:7.2f} | "
           f"{r['latency_ms_median']:10.1f} | {size:5.1f}{extra} |")
     out.append({"config": name, **r, "bundle_mb": size})
