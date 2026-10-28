@@ -41,6 +41,10 @@ def make_handler(searcher: Searcher, originals: list[Path], llm_model: str | Non
 
         def do_POST(self):
             if urllib.parse.urlparse(self.path).path != "/api/chat":
+                r = extras.handle_post(urllib.parse.urlparse(self.path).path,
+                                       self.headers, self.rfile, searcher)
+                if r is not None:
+                    return self._send(*r)
                 return self._json({"error": "not found"}, 404)
             try:
                 req = json.loads(self.rfile.read(int(self.headers.get("Content-Length") or 0)) or b"{}")

@@ -16,12 +16,14 @@
     hq: '<path d="M4 20V9l8-5 8 5v11"/><path d="M10 20v-6h4v6"/>',
     gaps: '<path d="M12 3v10M12 17v2"/><circle cx="12" cy="12" r="9"/>',
     radar: '<circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="4"/><path d="M12 3v18M3 12h18"/>',
-    trail: '<path d="M6 4h9l4 4v12H6z"/><path d="M9 12h7M9 16h5"/>'
+    trail: '<path d="M6 4h9l4 4v12H6z"/><path d="M9 12h7M9 16h5"/>',
+    cam: '<path d="M3 8h3l2-3h8l2 3h3v11H3z"/><circle cx="12" cy="13" r="3.4"/>'
   };
   var GROUPS = [
     {name: "Field", title: "Runs offline on the device in the clinic", items: [
       {href: "/", label: "Search", icon: I.search},
       {href: "/sms", label: "SMS line", icon: I.sms},
+      {href: "/scan", label: "Scan a label", icon: I.cam},
       {href: "/galaxy", label: "Library map", icon: I.map}
     ]},
     {name: "HQ", title: "What the field sends back, and what HQ ships next", items: [

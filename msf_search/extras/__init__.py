@@ -12,7 +12,7 @@ only, no LLM, no network: these run on the same field device as the rest.
 import json
 from pathlib import Path
 
-from . import galaxy, privacy, radar, sms, trail
+from . import galaxy, privacy, radar, scan, sms, trail
 
 PKG = Path(__file__).resolve().parent
 STATIC = PKG.parent / "static"
@@ -49,6 +49,8 @@ def handle(path: str, qs: dict, searcher):
         return _page("radar.html")
     if path == "/api/radar":
         return _json(radar.payload(DATA / "radar_sim.json", ROOT / "logs" / "unanswered.jsonl"))
+    if path == "/scan":
+        return _page("scan.html")
     if path == "/hq":
         return _page("hq.html")
     if path == "/trail":
@@ -58,4 +60,19 @@ def handle(path: str, qs: dict, searcher):
     if path == "/api/checkpoint":
         log = ROOT / "logs" / "unanswered.jsonl"
         return _json(privacy.clear(log) if g("action") == "clear" else privacy.status(log))
+    return None
+
+
+def handle_post(path: str, headers, rfile, searcher):
+    """POST routes. The image arrives as the raw request body, so there is no multipart to parse
+    and the phone can post the File object straight from the capture input."""
+    if path == "/api/scan":
+        try:
+            n = int(headers.get("Content-Length") or 0)
+        except ValueError:
+            n = 0
+        if n > scan.MAX_BYTES:
+            return _json({"ok": False, "reason": "image too large"}, 413)
+        data = rfile.read(n) if n > 0 else b""
+        return _json(scan.scan(searcher, data, headers.get("Content-Type", "")))
     return None
