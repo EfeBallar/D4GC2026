@@ -1,12 +1,12 @@
 """HQ "digitise anything": turn scans, slide decks and photos of handwritten notes into searchable text.
 
 Preprocessing only (runs off-premises). The field device never sees an OCR engine or a model: it
-gets the transcribed text inside index.db, flagged as transcribed so the UI can say "check the
-original". Two engines:
-  * vlm:       any OpenAI-compatible vision endpoint (env VLM_BASE_URL, VLM_API_KEY, VLM_MODEL).
-               Best for handwriting, tables and doses. Swappable, so no vendor lock-in.
-  * tesseract: local open-source OCR, the zero-cost fallback when no API is configured.
-Both mark unreadable words as [?], so a doctor never sees a guessed dose presented as fact.
+gets the transcribed text inside index.db, with per-page provenance so the UI can say "check the
+original". Per page, local tesseract runs first (free). A page escalates to a vision LLM (any
+OpenAI-compatible endpoint: env VLM_BASE_URL, VLM_API_KEY, VLM_MODEL) when tesseract is unsure
+(mean confidence < 60 or > 20% unreadable words); inbox images (handwriting) always go to the VLM.
+Without a VLM configured, tesseract's text is kept. Both mark unreadable words as [?], so a doctor
+never sees a guessed dose presented as fact.
 
 Outputs, per document: data/transcriptions/<id>.md (one "## Page N" section per page) and a
 <id>.json sidecar. Resumable: finished documents are skipped, finished pages are cached.
@@ -75,12 +75,13 @@ class Tesseract:
         self.min_conf = min_conf
         self.tokens = {"prompt": 0, "completion": 0}
 
-    def transcribe(self, image: Path) -> str:
+    def transcribe(self, image: Path) -> dict:
+        """-> {text, mean_conf (0-100), words, unreadable}"""
         env = {**os.environ, "OMP_THREAD_LIMIT": "1"}  # we parallelise across pages instead
         tsv = subprocess.run(["tesseract", str(image), "-", "-l", self.langs, "tsv"],
                              capture_output=True, text=True, env=env, check=True).stdout
         # Rebuild lines from word boxes; words tesseract is unsure of become [?], like the VLM prompt asks.
-        lines, last_par = [], None
+        lines, last_par, confs = [], None, []
         for row in tsv.splitlines()[1:]:
             f = row.split("\t")
             if len(f) < 12 or f[0] != "5" or not f[11].strip():
@@ -90,10 +91,13 @@ class Tesseract:
                 lines.append(("", ""))
             if not lines or lines[-1][0] != line:
                 lines.append((line, ""))
-            word = f[11] if float(f[10]) >= self.min_conf else "[?]"
+            confs.append(float(f[10]))
+            word = f[11] if confs[-1] >= self.min_conf else "[?]"
             lines[-1] = (line, (lines[-1][1] + " " + word).strip())
             last_par = par
-        return "\n".join(t for _, t in lines).strip()
+        return {"text": "\n".join(t for _, t in lines).strip(),
+                "mean_conf": round(sum(confs) / len(confs), 1) if confs else 0.0,
+                "words": len(confs), "unreadable": sum(1 for c in confs if c < self.min_conf)}
 
 
 class VisionLLM:
@@ -111,8 +115,10 @@ class VisionLLM:
         body = json.dumps({"model": self.model, "temperature": 0, "messages": [{"role": "user", "content": [
             {"type": "text", "text": PROMPT},
             {"type": "image_url", "image_url": {"url": data_uri}}]}]}).encode("utf-8")
-        req = urllib.request.Request(self.url, data=body, headers={
-            "Content-Type": "application/json", "Authorization": f"Bearer {self.key}"})
+        headers = {"Content-Type": "application/json"}
+        if self.key:
+            headers["Authorization"] = f"Bearer {self.key}"
+        req = urllib.request.Request(self.url, data=body, headers=headers)
         for attempt in range(3):
             try:
                 with urllib.request.urlopen(req, timeout=self.timeout) as r:
@@ -128,15 +134,20 @@ class VisionLLM:
         return out["choices"][0]["message"]["content"].strip()
 
 
-def make_engine(engine: str = "auto", langs: str = "eng+fra"):
-    env = {k: os.environ.get(k, "") for k in ("VLM_BASE_URL", "VLM_API_KEY", "VLM_MODEL")}
-    if engine == "vlm" or (engine == "auto" and all(env.values())):
-        if not all(env.values()):
-            raise SystemExit("engine vlm needs VLM_BASE_URL, VLM_API_KEY and VLM_MODEL")
-        return VisionLLM(env["VLM_BASE_URL"], env["VLM_API_KEY"], env["VLM_MODEL"])
-    if not shutil.which("tesseract"):
+def make_engines(engine: str = "auto", langs: str = "eng+fra"):
+    """-> (tesseract or None, vlm or None). auto: tesseract first, VLM for unsure pages if configured."""
+    # Same local-first default as enrich.py (Ollama's OpenAI-format endpoint); VLM_MODEL must name a
+    # vision model (e.g. a pulled llava / qwen2.5vl), otherwise pages stay with tesseract.
+    vlm = (VisionLLM(os.environ.get("VLM_BASE_URL") or "http://localhost:11434/v1", os.environ.get("VLM_API_KEY", ""),
+                     os.environ["VLM_MODEL"]) if os.environ.get("VLM_MODEL") else None)
+    if engine == "vlm" and not vlm:
+        raise SystemExit("engine vlm needs VLM_MODEL (and VLM_BASE_URL / VLM_API_KEY for a non-local provider)")
+    tess = Tesseract(langs) if engine != "vlm" and shutil.which("tesseract") else None
+    if engine == "tesseract":
+        vlm = None
+    if not tess and not vlm:
         raise SystemExit("no VLM configured and tesseract is not installed")
-    return Tesseract(langs)
+    return tess, vlm
 
 
 # ---------- per document ----------
@@ -147,33 +158,50 @@ def _render(pdf: Path, page: int, dpi: int, tmp: Path) -> Path:
     return prefix.with_suffix(".png")
 
 
-def digitise(item: dict, engine, out_dir: str, dpi: int = 150, workers: int = 4) -> dict | None:
+def digitise(item: dict, tess, vlm, out_dir: str, dpi: int = 150, workers: int = 4,
+             min_conf: float = 60, max_unreadable: float = 0.2) -> dict | None:
     """Transcribe one PDF or inbox image. Returns its sidecar, or None if it was already done."""
     out = Path(out_dir)
     md_path, meta_path = out / f"{item['id']}.md", out / f"{item['id']}.json"
-    if md_path.exists() and meta_path.exists():
+    if md_path.exists() and meta_path.exists() and "page_info" in json.loads(meta_path.read_text()):
         return None
     cache = out / ".pages" / item["id"]  # page-level resume: a crash on page 80 doesn't re-bill 79 pages
     cache.mkdir(parents=True, exist_ok=True)
     t0 = time.time()
     is_pdf = item["path"].suffix.lower() == ".pdf"
 
-    def page_text(n: int) -> str:
-        done = cache / f"{n:04d}.md"
+    def page(n: int) -> dict:
+        done = cache / f"{n:04d}.json"
         if done.exists():
-            return done.read_text(encoding="utf-8")
+            return json.loads(done.read_text(encoding="utf-8"))
         with tempfile.TemporaryDirectory() as tmp:
             img = _render(item["path"], n, dpi, Path(tmp)) if is_pdf else item["path"]
-            text = engine.transcribe(img)
-        done.write_text(text, encoding="utf-8")
-        return text
+            rec = {"page": n, "engine": None, "model": None, "mean_conf": None, "unreadable_ratio": None}
+            if tess:
+                t = tess.transcribe(img)
+                rec.update(engine="tesseract", model=tess.model, mean_conf=t["mean_conf"], text=t["text"],
+                           unreadable_ratio=round(t["unreadable"] / max(1, t["words"]), 3))
+            unsure = not tess or rec["mean_conf"] < min_conf or rec["unreadable_ratio"] > max_unreadable
+            if vlm and (unsure or not is_pdf):  # handwriting / photos always go to the VLM
+                rec.update(engine="vlm", model=vlm.model, text=vlm.transcribe(img))
+        done.write_text(json.dumps(rec, ensure_ascii=False), encoding="utf-8")
+        return rec
 
     with ThreadPoolExecutor(max_workers=workers) as pool:
-        texts = list(pool.map(page_text, range(1, item["pages"] + 1)))
-    md = "\n\n".join(f"## Page {n}\n\n{t}" for n, t in enumerate(texts, 1)) if is_pdf else texts[0]
-    meta = {"source": engine.source, "model": engine.model, "pages": item["pages"],
+        recs = list(pool.map(page, range(1, item["pages"] + 1)))
+    md = ("\n\n".join(f"## Page {r['page']}\n\n{r['text']}" for r in recs) if is_pdf else recs[0]["text"])
+    n_vlm = sum(1 for r in recs if r["engine"] == "vlm")
+    tess_confs = [r["mean_conf"] for r in recs if r["engine"] == "tesseract"]
+    meta = {"source": "vlm" if n_vlm else "tesseract",
+            "model": " + ".join(sorted({r["model"] for r in recs})), "pages": item["pages"],
             "unreadable_count": len(_UNREADABLE.findall(md)), "original": item["path"].name,
-            "seconds": round(time.time() - t0, 1), "created_at": time.strftime("%Y-%m-%d %H:%M:%S")}
+            "seconds": round(time.time() - t0, 1), "created_at": time.strftime("%Y-%m-%d %H:%M:%S"),
+            "text_source": "ocr_vlm" if n_vlm else "ocr_tesseract",
+            # mean tesseract confidence (0-1) over pages kept from tesseract; null when the VLM did them all
+            "ocr_confidence": round(sum(tess_confs) / len(tess_confs) / 100, 3) if tess_confs else None,
+            "engines": {"tesseract": item["pages"] - n_vlm, "vlm": n_vlm},
+            "page_info": [{k: r[k] for k in ("page", "engine", "model", "mean_conf", "unreadable_ratio")}
+                          for r in recs]}
     md_path.write_text(md + "\n", encoding="utf-8")
     meta_path.write_text(json.dumps(meta, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
     shutil.rmtree(cache, ignore_errors=True)

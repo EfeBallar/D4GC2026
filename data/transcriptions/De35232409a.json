@@ -4,6 +4,112 @@
   "pages": 14,
   "unreadable_count": 49,
   "original": "De35232409a.pdf",
-  "seconds": 4.4,
-  "created_at": "2026-10-28 14:52:54"
+  "seconds": 6.1,
+  "created_at": "2026-10-28 15:20:56",
+  "text_source": "ocr_tesseract",
+  "ocr_confidence": 0.839,
+  "engines": {
+    "tesseract": 14,
+    "vlm": 0
+  },
+  "page_info": [
+    {
+      "page": 1,
+      "engine": "tesseract",
+      "model": "tesseract 5.5.1 (eng)",
+      "mean_conf": 73.7,
+      "unreadable_ratio": 0.125
+    },
+    {
+      "page": 2,
+      "engine": "tesseract",
+      "model": "tesseract 5.5.1 (eng)",
+      "mean_conf": 74.1,
+      "unreadable_ratio": 0.091
+    },
+    {
+      "page": 3,
+      "engine": "tesseract",
+      "model": "tesseract 5.5.1 (eng)",
+      "mean_conf": 86.7,
+      "unreadable_ratio": 0.045
+    },
+    {
+      "page": 4,
+      "engine": "tesseract",
+      "model": "tesseract 5.5.1 (eng)",
+      "mean_conf": 82.7,
+      "unreadable_ratio": 0.087
+    },
+    {
+      "page": 5,
+      "engine": "tesseract",
+      "model": "tesseract 5.5.1 (eng)",
+      "mean_conf": 93.5,
+      "unreadable_ratio": 0.0
+    },
+    {
+      "page": 6,
+      "engine": "tesseract",
+      "model": "tesseract 5.5.1 (eng)",
+      "mean_conf": 88.7,
+      "unreadable_ratio": 0.038
+    },
+    {
+      "page": 7,
+      "engine": "tesseract",
+      "model": "tesseract 5.5.1 (eng)",
+      "mean_conf": 67.2,
+      "unreadable_ratio": 0.15
+    },
+    {
+      "page": 8,
+      "engine": "tesseract",
+      "model": "tesseract 5.5.1 (eng)",
+      "mean_conf": 86.6,
+      "unreadable_ratio": 0.033
+    },
+    {
+      "page": 9,
+      "engine": "tesseract",
+      "model": "tesseract 5.5.1 (eng)",
+      "mean_conf": 89.7,
+      "unreadable_ratio": 0.012
+    },
+    {
+      "page": 10,
+      "engine": "tesseract",
+      "model": "tesseract 5.5.1 (eng)",
+      "mean_conf": 91.9,
+      "unreadable_ratio": 0.014
+    },
+    {
+      "page": 11,
+      "engine": "tesseract",
+      "model": "tesseract 5.5.1 (eng)",
+      "mean_conf": 93.5,
+      "unreadable_ratio": 0.011
+    },
+    {
+      "page": 12,
+      "engine": "tesseract",
+      "model": "tesseract 5.5.1 (eng)",
+      "mean_conf": 78.7,
+      "unreadable_ratio": 0.172
+    },
+    {
+      "page": 13,
+      "engine": "tesseract",
+      "model": "tesseract 5.5.1 (eng)",
+      "mean_conf": 77.0,
+      "unreadable_ratio": 0.141
+    },
+    {
+      "page": 14,
+      "engine": "tesseract",
+      "model": "tesseract 5.5.1 (eng)",
+      "mean_conf": 90.1,
+      "unreadable_ratio": 0.041
+    }
+  ]
 }

@@ -47,7 +47,8 @@ def make_delta(index_path: str, doc_ids: list[str], out_path: str, version: str 
     marks = ",".join("?" * len(doc_ids))
     # Copy rows with the source's own column layout, so the delta always matches the index schema.
     con.execute(f"CREATE TABLE docs AS SELECT * FROM src.docs WHERE id IN ({marks})", doc_ids)
-    con.execute(f"CREATE TABLE chunks AS SELECT doc_id, ord, heading, text FROM src.chunks "
+    ccols = ",".join(r[1] for r in con.execute("PRAGMA src.table_info(chunks)") if r[1] != "id")
+    con.execute(f"CREATE TABLE chunks AS SELECT {ccols} FROM src.chunks "
                 f"WHERE doc_id IN ({marks}) ORDER BY doc_id, ord", doc_ids)
     con.execute("CREATE TABLE chunks_fts_rows(doc_id TEXT, ord INTEGER, title TEXT, heading TEXT, body TEXT)")
     titles = dict(con.execute("SELECT id, title FROM docs"))
@@ -119,13 +120,14 @@ def apply_delta(index_path: str, delta_path: str) -> dict:
             else:
                 added += 1
         con.execute(f"INSERT INTO docs({','.join(cols)}) SELECT {','.join(cols)} FROM u.docs")
-        for doc_id, ord_, heading, text, title, fh, body in con.execute(
-                "SELECT c.doc_id, c.ord, c.heading, c.text, f.title, f.heading, f.body FROM u.chunks c "
+        ccols = [r[1] for r in con.execute("PRAGMA u.table_info(chunks)")]
+        for row in con.execute(
+                f"SELECT {','.join('c.' + c for c in ccols)}, f.title, f.heading, f.body FROM u.chunks c "
                 "JOIN u.chunks_fts_rows f ON f.doc_id=c.doc_id AND f.ord=c.ord ORDER BY c.doc_id, c.ord").fetchall():
-            cur = con.execute("INSERT INTO chunks(doc_id, ord, heading, text) VALUES (?,?,?,?)",
-                              (doc_id, ord_, heading, text))
+            cur = con.execute(f"INSERT INTO chunks({','.join(ccols)}) VALUES ({','.join('?' * len(ccols))})",
+                              row[:len(ccols)])
             con.execute("INSERT INTO chunks_fts(rowid, title, heading, body) VALUES (?,?,?,?)",
-                        (cur.lastrowid, title, fh, body))
+                        (cur.lastrowid, *row[len(ccols):]))
             n_chunks += 1
         applied.append(version)
         con.execute("INSERT OR REPLACE INTO meta VALUES ('library_version', ?)", (version,))

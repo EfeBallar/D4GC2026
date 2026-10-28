@@ -1,0 +1,72 @@
+# MSF Field Library: HTTP API
+
+Served by `python -m msf_search.server` (standard library, no internet). All responses are JSON (UTF-8)
+unless noted. **The contract is additive only: fields are never renamed or removed.** New fields are marked
+with the step that added them.
+
+## Provenance object (on every doc, passage and result)
+
+```json
+{"text_source": "parsed" | "ocr_tesseract" | "ocr_vlm",
+ "ocr_confidence": 0.93,          // 0-1, tesseract mean word confidence; null if not OCR or VLM-only
+ "machine_generated": false,      // true for HQ-made summaries / Q&A: the UI MUST label these
+ "generator": null,               // "summary" | "qa" | null
+ "model": "tesseract 5.5.1 (eng)",// OCR engine or LLM that produced the text; null for parsed text
+ "generated_at": "2026-10-28 15:20:49"}
+```
+UI rule: never show machine-made text without its label (see `static/features.js`):
+- summary: "AI summary (made at HQ) · check the source"
+- Q&A: "AI-prepared answer (made at HQ from this document) · check the source"
+- OCR: "Transcribed from scan/handwriting (<engine>, confidence X) · check the original" + link to the
+  original at `#page=N`.
+
+## GET /api/search
+
+Query params: `q` (required), `k` (default 10), `lang` (comma list, e.g. `fr,es`), `genre` (`|` list),
+`strict` (`1` default: hide weak matches; `0` show them).
+
+```json
+{"query": "Orissa cyclone",
+ "concepts": [{"label": "orissa", "weight": 5.6, "variants": ["orissa"]}],
+ "unknown_terms": [],               // query terms found nowhere in the library
+ "results": [{
+   "doc_id": "D0eebba4c05", "score": 0.453, "confidence": "high",   // high | medium | low
+   "passage_coverage": 1.0, "doc_coverage": 1.0, "aboutness": 0.04, "chunk_id": 18210,
+   "title": "Published in October 2000 by Médecins Sans Frontiéres", "genre": "Financial Report",
+   "language": "en", "also_filed_as": [], "original_name": "D0eebba4c05.pdf",
+   "heading": "Page 59", "snippet": "A <mark>cyclone</mark> that struck India's <mark>Orissa</mark> ...",
+   "year": 2000,                     // step: evidence tiers (null = unknown)
+   "tier": "Background", "tier_rank": 6,   // evidence tier label and rank (1 = Guideline)
+   "transcribed": true,              // text came from OCR
+   "provenance": {...},              // v2 step 0: provenance of the passage shown
+   "doc_provenance": {...},          // v2 step 0: provenance of the document
+   "page": 59                        // v2 step 0: page of the passage (OCR'd PDFs), else null
+ }],
+ "weaker_matches": [...],            // same shape; hidden by default in the UI
+ "abstained": false,                 // true = "No reliable match"
+ "reason": "", "ms": 2.6}
+```
+
+## GET /api/doc/<id>
+Document metadata plus full `text`, including `provenance`.
+
+## GET /api/info
+```json
+{"report": {"documents": 582, "languages": {...}, "genres": {...}, "index_mb": 33.1, ...},
+ "library_version": "2026-10-28-1530", "n_docs": 561, "index_mb": 33.1,
+ "llm": false, "originals": true}
+```
+
+## GET /original/<file>
+The original PDF / HTML / inbox image. Append `#page=N` to open a PDF at a page.
+
+## GET /gaps, GET /api/gaps
+Searches with no reliable match (logged to `logs/unanswered.jsonl`):
+```json
+{"unanswered": 6, "distinct_queries": 4, "top_unknown_terms": [["kubernetes", 1]],
+ "top_queries": [{"query": "dengue vaccine for adults in brazil", "count": 3, "last_seen": "2026-10-28T15:12:30"}],
+ "recent": [{"ts": "...", "query": "...", "unknown_terms": [], "library_version": "...", "filters": {"lang": ["ar"]}}]}
+```
+
+## GET /static/<file>
+Static assets, e.g. `/static/features.js` (UI rendering helpers for the GUI).

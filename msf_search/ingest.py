@@ -6,6 +6,7 @@ but is cheap enough to run on a laptop too.
 import csv
 import hashlib
 import html
+import json
 import re
 import time
 from collections import Counter
@@ -36,6 +37,12 @@ class Doc:
     quality: str = "ok"             # ok | boilerplate | very_short
     year: int = 0                   # best guess from the opening text, 0 = unknown
     transcribed: bool = False       # text comes from OCR / a vision model (scripts/digitise.py)
+    # provenance (see API.md): where the text came from, and how sure the OCR was
+    text_source: str = "parsed"     # parsed | ocr_tesseract | ocr_vlm
+    ocr_confidence: float | None = None
+    ocr_model: str | None = None
+    ocr_at: str | None = None
+    page_info: dict = field(default_factory=dict)  # page number -> {engine, model, mean_conf}
 
 
 def clean_markdown(md: str) -> str:
@@ -100,6 +107,16 @@ def guess_year(text: str, head_chars: int = 2000) -> int:
     return Counter(years).most_common(1)[0][0] if years else 0
 
 
+def _set_ocr_provenance(d: Doc, md: Path):
+    sidecar = md.with_suffix(".json")
+    meta = json.loads(sidecar.read_text(encoding="utf-8")) if sidecar.exists() else {}
+    d.text_source = meta.get("text_source") or ("ocr_vlm" if meta.get("source") == "vlm" else "ocr_tesseract")
+    d.ocr_confidence = meta.get("ocr_confidence")
+    d.ocr_model = meta.get("model")
+    d.ocr_at = meta.get("created_at")
+    d.page_info = {p["page"]: p for p in meta.get("page_info", [])}
+
+
 def load_collection(data_dir: str, csv_path: str | None = None, boilerplate_min_docs: int = 8,
                     transcriptions_dir: str | None = None, inbox_dir: str | None = None) -> list[Doc]:
     """transcriptions_dir: output of scripts/digitise.py. A transcription replaces the thin parsed
@@ -139,6 +156,8 @@ def load_collection(data_dir: str, csv_path: str | None = None, boilerplate_min_
             md5=hashlib.md5(raw.encode("utf-8")).hexdigest(),
             transcribed=src is not p,
         ))
+        if src is not p:
+            _set_ocr_provenance(docs[-1], src)
     if trans and inbox_dir and Path(inbox_dir).exists():
         for img in sorted(Path(inbox_dir).iterdir()):
             t = trans / f"{inbox_id(img)}.md"
@@ -148,6 +167,7 @@ def load_collection(data_dir: str, csv_path: str | None = None, boilerplate_min_
             docs.append(Doc(id=inbox_id(img), genre="Field Note (handwritten)", language="unknown",
                             text=clean_markdown(raw), md_path=str(t), original_path=str(img),
                             md5=hashlib.md5(raw.encode("utf-8")).hexdigest(), transcribed=True))
+            _set_ocr_provenance(docs[-1], t)
 
     # 1) Corpus-level boilerplate removal: short lines that recur in many different docs
     #    (navigation menus, cookie banners, "Sign up to stay updated"...).

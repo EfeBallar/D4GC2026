@@ -7,7 +7,7 @@ import argparse, os, sys, time
 from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
-from msf_search.digitise import digitise, find_inbox_images, find_low_text_pdfs, make_engine, pdf_pages
+from msf_search.digitise import digitise, find_inbox_images, find_low_text_pdfs, make_engines, pdf_pages
 
 ap = argparse.ArgumentParser()
 ap.add_argument("--data", required=True, help="folder containing Parsed/ and Original/")
@@ -35,22 +35,24 @@ for x in items:
 if a.list or not items:
     sys.exit(0)
 
-engine = make_engine(a.engine, a.langs)
-print(f"engine: {engine.source} · {engine.model}" + (f" · missing languages: {engine.missing}" if engine.missing else ""))
+tess, vlm = make_engines(a.engine, a.langs)
+print(f"engines: tesseract={tess.model if tess else 'off'}" + (f" (missing languages: {tess.missing})" if tess and tess.missing else "")
+      + f" · vlm={vlm.model if vlm else 'not configured (VLM_BASE_URL/VLM_API_KEY/VLM_MODEL)'}")
 Path(a.out).mkdir(parents=True, exist_ok=True)
 t0, pages, unreadable = time.time(), 0, 0
 for x in items:
-    meta = digitise(x, engine, a.out, dpi=a.dpi, workers=a.workers)
+    meta = digitise(x, tess, vlm, a.out, dpi=a.dpi, workers=a.workers)
     if meta is None:
         print(f"  {x['id']:24} skipped (already transcribed)")
         continue
     pages += meta["pages"]
     unreadable += meta["unreadable_count"]
-    print(f"  {x['id']:24} {meta['pages']:4} pages  {meta['seconds']:6.1f} s  {meta['unreadable_count']} [?]")
+    conf = f"conf {meta['ocr_confidence']:.2f}" if meta["ocr_confidence"] is not None else "conf n/a"
+    print(f"  {x['id']:24} {meta['pages']:4} pages  {meta['seconds']:6.1f} s  {meta['unreadable_count']} [?]  {conf}  engines {meta['engines']}")
 secs = time.time() - t0
-cost = "USD 0 (local OCR)" if engine.source == "tesseract" else f"tokens {engine.tokens}"
-if engine.source == "vlm" and os.environ.get("VLM_PRICE_IN") and os.environ.get("VLM_PRICE_OUT"):
-    usd = (engine.tokens["prompt"] * float(os.environ["VLM_PRICE_IN"])
-           + engine.tokens["completion"] * float(os.environ["VLM_PRICE_OUT"])) / 1e6
+cost = f"VLM tokens {vlm.tokens}" if vlm else "USD 0 (local OCR only)"
+if vlm and os.environ.get("VLM_PRICE_IN") and os.environ.get("VLM_PRICE_OUT"):
+    usd = (vlm.tokens["prompt"] * float(os.environ["VLM_PRICE_IN"])
+           + vlm.tokens["completion"] * float(os.environ["VLM_PRICE_OUT"])) / 1e6
     cost += f" ≈ USD {usd:.2f}"
 print(f"done: {pages} pages in {secs:.0f} s ({secs / max(pages, 1):.1f} s/page), {unreadable} unreadable words, cost: {cost}")

@@ -39,6 +39,12 @@ def make_handler(searcher: Searcher, originals: list[Path], llm_model: str | Non
             g = lambda k, d="": qs.get(k, [d])[0]
             if u.path in ("/", "/index.html"):
                 return self._send(200, (STATIC / "index.html").read_bytes(), "text/html; charset=utf-8")
+            if u.path.startswith("/static/"):
+                f = STATIC / Path(urllib.parse.unquote(u.path[len("/static/"):])).name
+                if f.is_file():
+                    return self._send(200, f.read_bytes(), (mimetypes.guess_type(f.name)[0] or "application/octet-stream")
+                                      + ("; charset=utf-8" if f.suffix in (".js", ".css", ".html") else ""))
+                return self._json({"error": "not found"}, 404)
             if u.path == "/gaps":
                 return self._send(200, (STATIC / "gaps.html").read_bytes(), "text/html; charset=utf-8")
             if u.path == "/api/gaps":

@@ -43,6 +43,16 @@ DEFAULT_TIER = ("Other", 1.00)
 GENRE_TIER = {g: (label, rank, w) for rank, (label, (w, gs)) in enumerate(EVIDENCE_TIERS.items(), 1) for g in gs}
 
 
+PROVENANCE_COLS = "text_source, ocr_confidence, machine_generated, generator, model, generated_at"
+
+
+def provenance(text_source, ocr_confidence, machine_generated, generator, model, generated_at) -> dict:
+    """The provenance object on every doc, chunk and result (API.md). machine_generated text must be labelled."""
+    return {"text_source": text_source or "parsed", "ocr_confidence": ocr_confidence,
+            "machine_generated": bool(machine_generated), "generator": generator, "model": model,
+            "generated_at": generated_at}
+
+
 class Concept:
     def __init__(self, label: str, variants: list[tuple]):
         self.label = label
@@ -82,10 +92,10 @@ class Searcher:
         self.docs = {r[0]: {"id": r[0], "genre": r[1], "language": r[2], "title": r[3],
                              "quality": r[4], "also_filed_as": json.loads(r[5] or "[]"),
                              "original_name": r[6], "n_chunks": r[7], "year": r[8] or None,
-                             "transcribed": bool(r[9])}
+                             "transcribed": bool(r[9]), "provenance": provenance(*r[10:16])}
                      for r in self.con.execute(
-                         "SELECT id, genre, language, title, quality, also_filed_as, original_name, n_chunks, year, transcribed "
-                         "FROM docs")}
+                         "SELECT id, genre, language, title, quality, also_filed_as, original_name, n_chunks, year, transcribed, "
+                         f"{PROVENANCE_COLS} FROM docs")}
         for meta in self.docs.values():
             label, rank, w = GENRE_TIER.get(meta["genre"], (DEFAULT_TIER[0], len(EVIDENCE_TIERS) + 1, DEFAULT_TIER[1]))
             meta.update({"tier": label, "tier_rank": rank, "prior": w})
@@ -234,6 +244,9 @@ class Searcher:
         h, t = self.con.execute("SELECT heading, text FROM chunks WHERE id=?", (cid,)).fetchone()
         return h, zlib.decompress(t).decode("utf-8")
 
+    def chunk_provenance(self, cid: int) -> dict:
+        return provenance(*self.con.execute(f"SELECT {PROVENANCE_COLS} FROM chunks WHERE id=?", (cid,)).fetchone())
+
     def _decorate(self, r: dict, concepts: list[Concept]):
         meta = self.docs[r["doc_id"]]
         r.update({k: meta[k] for k in ("title", "genre", "language", "also_filed_as", "original_name",
@@ -241,6 +254,10 @@ class Searcher:
         heading, text = self._chunk(r["chunk_id"])
         r["heading"] = heading
         r["snippet"] = make_snippet(text, concepts)
+        r["provenance"] = self.chunk_provenance(r["chunk_id"])   # of the passage shown
+        r["doc_provenance"] = meta["provenance"]
+        m = re.match(r"^Page (\d+)$", heading or "")
+        r["page"] = int(m.group(1)) if m else None
 
     def get_document(self, doc_id: str) -> dict | None:
         self.refresh()
