@@ -121,5 +121,6 @@ async function ask(){
 async function openDoc(id){const d=await (await fetch("/api/doc/"+id)).json();$("#dt").textContent=d.title+" ("+id+")";$("#dbody").textContent=d.text;$("#dbody").dir="auto";$("#dlg").showModal()}
 $("#f").onsubmit=run;$("#genre").onchange=run;$("#strict").onchange=run;init();
 </script>
+<script src="/static/features.js"></script>
 </body>
 </html>
