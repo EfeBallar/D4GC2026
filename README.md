@@ -1,3 +1,16 @@
+## Team quickstart
+
+```
+git clone git@github.com:lilyehl/D4GC2026.git        # or https://github.com/lilyehl/D4GC2026.git
+# put the "D4GC data" folder NEXT TO the repo (it is not in git): ../D4GC data/{Original,Parsed}
+cd D4GC2026
+python scripts/build_index.py --data "../D4GC data" --csv data/documentation.csv
+python -m msf_search.server --originals "../D4GC data/Original"
+# open http://localhost:8000
+```
+Read **HANDOFF.md** and **API.md** before changing anything, and work on your own branch
+(`git checkout -b <you>-<feature>`). Never commit the dataset, `build/`, `*.db`, models or keys.
+
 # MSF Field Library: offline document retrieval
 
 > **Team: read [HANDOFF.md](HANDOFF.md) for the current state and the task list.**
