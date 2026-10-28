@@ -1,0 +1,58 @@
+/* Light by default; an explicit switch saves the preference across pages. */
+:root {
+  color-scheme: light;
+  --bg: #f6f5f3;
+  --card: #fff;
+  --ink: #1d1d1f;
+  --mute: #6b6b70;
+  --line: #e3e1dd;
+  --red: #e2001a;
+  --red-soft: #fde8ea;
+  --on-red: #fff;
+  --hi: #fff1a8;
+  --ok: #1f7a3f;
+  --ok-soft: #e3f3e8;
+  --mid: #8a5a00;
+  --mid-soft: #fbf0d9;
+  --low: #6b6b70;
+  --low-soft: #eee;
+  --accent: #0969da;
+  --accent-soft: #e5efff;
+  --alert: #b42318;
+  --alert-soft: #fde8e6;
+  --alert-hover: #fbd3cf;
+  --purple: #7040b0;
+  --purple-soft: #f1eafa;
+  --pink: #b42675;
+  --orange: #a54a08;
+  --yellow: #806300;
+  --cyan: #087c9e;
+  --surface: #f0efed;
+  --stage: #fff;
+  --shadow: #0002;
+  --map-label: #52525b;
+}
+
+/* Both the search UI and feature pages use these names. */
+:root {
+  --panel: var(--card);
+  --dim: var(--mute);
+  --warn: var(--mid);
+  --screen: var(--ok-soft);
+  --screen-ink: var(--ok);
+  --radius: 12px;
+  --tap: 48px;
+}
+
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --bg: #141416; --card: #1e1e21; --ink: #ececee; --mute: #a0a0a8;
+  --line: #2f2f33; --red: #ff4d5e; --red-soft: #3a1a1e; --on-red: #141416;
+  --hi: #5a4a00; --ok: #6fd394; --ok-soft: #18311f;
+  --mid: #f0c060; --mid-soft: #3a2f12; --low: #a0a0a8; --low-soft: #2a2a2e;
+  --accent: #58a6ff; --accent-soft: #172d48;
+  --alert: #ff7b72; --alert-soft: #2a1512; --alert-hover: #3a1c18;
+  --purple: #d2a8ff; --purple-soft: #291c3d; --pink: #f778ba; --orange: #f0883e;
+  --yellow: #ffdf5d; --cyan: #79c0ff; --surface: #0d1117; --stage: #070a0e;
+  --shadow: #0007; --map-label: #a0a0a8;
+}

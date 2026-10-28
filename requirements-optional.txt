@@ -2,4 +2,6 @@
 # Optional dense / cross-lingual layer:
 sentence-transformers>=3.0
 numpy
+# Optional phone-photo OCR preprocessing (rotation, contrast, resize):
+Pillow>=10
 # Optional local LLM answers: install Ollama (https://ollama.com) and `ollama pull qwen3:1.7b`

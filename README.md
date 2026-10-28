@@ -1,157 +1,154 @@
-## Team quickstart
+# MSF Field Library
 
-```
-git clone git@github.com:lilyehl/D4GC2026.git        # or https://github.com/lilyehl/D4GC2026.git
-# put the "D4GC data" folder NEXT TO the repo (it is not in git): ../D4GC data/{Original,Parsed}
+**Medical knowledge, available offline.**
+
+A local document search and retrieval prototype built for the **Data 4 Good Challenge 2026** with a Médecins Sans Frontières document collection. Search across languages, open the matching source passage, and ask questions with citations—all from a laptop serving a phone or browser over local Wi-Fi.
+
+The core is a SQLite index and Python's standard library. Local AI, photo scanning, and document enrichment are optional layers.
+
+[Get started](#get-started) · [Features](#features) · [How it works](#how-it-works) · [Evaluation](#evaluation) · [Demo guide](DEMO.md) · [API](API.md)
+
+## Features
+
+- **Multilingual search.** English, French, Spanish, and Arabic query expansion through an editable glossary and abbreviation dictionary. Results include a source passage, document metadata, and match confidence.
+- **Local AI chat.** An optional model served by Ollama answers from retrieved passages with citations. When retrieval finds no reliable match, the app declines without calling the model.
+- **Scan a label.** Photograph printed medicine packaging to find related documents. Phone-photo conversion, orientation checks, contrast enhancement, and an editable name help recover difficult reads. Source excerpts and reference lists are identified separately.
+- **SMS interface.** Preview short, source-linked replies with GSM-7/UCS-2 segment counts. An optional AI overview describes the source in the question's language. The demo does not connect to a live mobile network.
+- **Library exploration.** Browse a document map, inspect vocabulary-based links between guidelines and research, and review unanswered searches in the HQ dashboard.
+- **Portable updates.** Build the library once, then distribute the SQLite file or smaller document updates. Search stays local after deployment.
+
+The interface works on phones and desktops, with a shared light/dark theme switch that remembers your choice.
+
+## Get started
+
+### 1. Clone and add the collection
+
+Requires **Python 3.10+** with SQLite FTS5. Core search needs no Python packages.
+
+```bash
+git clone https://github.com/lilyehl/D4GC2026.git
 cd D4GC2026
-python scripts/build_index.py --data "../D4GC data" --csv data/documentation.csv
-python -m msf_search.server --originals "../D4GC data/Original"
-# open http://localhost:8000
-```
-Read **HANDOFF.md** and **API.md** before changing anything, and work on your own branch
-(`git checkout -b <you>-<feature>`). Never commit the dataset, `build/`, `*.db`, models or keys.
-
-# MSF Field Library: offline document retrieval
-
-> **Team: read [HANDOFF.md](HANDOFF.md) for the current state and the task list.**
-
-Data 4 Good Challenge 2026 (Doctors Without Borders). This is a document retrieval tool that runs fully on-premises. It is
-**one SQLite file plus standard-library Python**: no internet, no GPU, no vendor, no licence cost.
-
-```
-python scripts/build_index.py --data "D4GC data" --csv data/documentation.csv   # preprocessing, ~5 s
-python -m msf_search.server --originals "D4GC data/Original"                     # field app on :8000
-python scripts/demo_queries.py "cholera outbreak children"                       # CLI
-python scripts/evaluate.py                                                        # quick metrics
-python scripts/build_abbreviations.py --data "D4GC data" --csv data/documentation.csv   # mine "long form (ABBR)" -> data/abbreviations.csv
 ```
 
-**HQ AI layer: open weights, no vendor.** Enrichment (summaries, multilingual keywords, grounded Q&A) runs
-at HQ on **Mistral 7B Instruct, an open-weight model served locally by Ollama** through its OpenAI-format
-endpoint (`http://localhost:11434/v1`): USD 0, no API key, no data leaves HQ. The provider is configuration,
-not code: set `LLM_BASE_URL` / `LLM_API_KEY` / `LLM_MODEL` (and `VLM_*` for scans) to switch, e.g. to the
-Mistral API for a fast full run. No provider or key is hardcoded. The field device never runs an LLM.
-```
-python scripts/hq_build.py --data "D4GC data"        # whole HQ pipeline, SKIPPED stages if a tool/model is missing
-python scripts/hq_enrich.py --data "D4GC data"       # 17-doc demo sample (default); --all for everything
-python scripts/ablation.py --data "D4GC data"        # ablation table on data/eval_queries.csv
-```
-Measured: 183 s/doc locally (laptop, 2 parallel requests), Q&A kept only if the evidence quote is verbatim
-in the document and every number in the answer appears there.
+The source document collection is **not included**. Place it next to the repository:
 
-**Digitise anything** (HQ only; the field never runs OCR or a model):
+```text
+workspace/
+├── D4GC2026/
+└── D4GC data/
+    ├── Original/    # original PDFs and HTML files
+    └── Parsed/      # Markdown files, named by document ID
 ```
-python scripts/digitise.py --data "D4GC data" --list   # PDFs with < 300 parsed chars/page + photos in data/inbox/
-python scripts/digitise.py --data "D4GC data"          # VLM if VLM_BASE_URL/VLM_API_KEY/VLM_MODEL are set, else tesseract
+
+### 2. Build and run search
+
+```bash
+python3 scripts/build_index.py --data "../D4GC data" --csv data/documentation.csv
+python3 -m msf_search.server --originals "../D4GC data/Original" --port 8767 --no-chat-warm
 ```
-Writes `data/transcriptions/<id>.md` + `.json` (source, model, pages, unreadable `[?]` count); resumable per page.
-`build_index.py` then uses them: a scanned PDF keeps its original text layer *plus* the transcription, and an inbox
-photo becomes a "Field Note (handwritten)" document. The UI flags both "Transcribed from scan / handwriting: check
-the original", with a link that opens the PDF at the matched page. Measured: 101 pages in 105 s with tesseract, USD 0.
-Handwriting needs the VLM engine; tesseract only reads print reliably.
 
-**Gap log**: searches with no reliable match are appended to `logs/unanswered.jsonl` (query, unknown terms,
-filters, library version; no user or IP). See them at `/gaps`; at HQ merge site logs with `python scripts/gaps.py site1.jsonl site2.jsonl`.
+Open **http://localhost:8767**. A phone on the same Wi-Fi can use `http://<laptop-ip>:8767`.
 
-**Delta updates** (ship a few documents instead of a new `index.db`):
+Try `hémorragie du post-partum`, `pph treatment`, or `Orissa cyclone`. The query `bitcoin price` demonstrates the no-match response.
+
+### 3. Add local AI (optional)
+
+Install Ollama and download a model once while online:
+
+```bash
+ollama pull mistral:7b-instruct
 ```
-python scripts/make_delta.py --ids P23,P24                    # HQ: -> build/update_<version>.db, ~40 KB for 2 guideline chapters
-python scripts/apply_delta.py build/update_<version>.db       # field: one transaction, idempotent, running server picks it up
-python scripts/build_index.py ... --exclude-ids P23,P24 --out build/field_base.db   # demo: a base library missing those docs
+
+From a fresh terminal session, with the search-only server above stopped, run:
+
+```bash
+./start.sh --port 8767 --model mistral:7b-instruct --check-chat
 ```
-Demo: on the base library "uterine atony" says *No reliable match (not found anywhere: atony)*; after the
-delta it finds the PPH guideline P23. Results after a delta are identical to a full rebuild (checked on 40 queries).
-Requirements: **Python 3.10+ and nothing else** (SQLite FTS5 ships with Python). Optional extras are listed below.
 
-## Numbers (full collection, 2-core laptop CPU)
+The launcher starts or reuses Ollama, loads the installed model, and starts the app. `--check-chat` checks a complete chat request for a cited answer. Keep the terminal open while using the app. After model installation and library preparation, this configuration works without internet access.
 
-| | |
-|---|---|
-| Documents in the collection | 582 (470 en, 51 ar, 44 fr, 17 es) |
-| Searchable after cleaning | 561 (3 exact duplicates merged, 18 failed scrapes flagged) |
-| Passages indexed | ~18,700 |
-| Index size (text + search index) | **32 MB**, a single file (the original PDFs/HTML are 386 MB and optional) |
-| Build time | ~5 s |
-| Query latency | **2.6 ms median, 9 ms p95** |
-| Known-item test (300 queries) | Recall@1 0.97, Recall@5 1.00, MRR 0.98 * |
-| Off-topic queries correctly answered with "no reliable match" | 18/20 |
+For the existing demo laptop with the `mistral-field` model installed, use `./start.sh --port 8767 --check-chat`.
 
-\* Label-free smoke test: the query words are sampled from the target document, so this is optimistic for keyword
-search. Real relevance judgments from MSF staff would be the next step (see `scripts/evaluate.py`).
+### Photo scanning (optional)
+
+Install Tesseract on the site server, including language packs for the labels you expect to read. Pillow enables image preprocessing:
+
+```bash
+python3 -m venv .venv
+source .venv/bin/activate
+python3 -m pip install Pillow
+```
+
+Start the server from that environment and open `/scan`. The browser prepares supported phone photos for upload; the server reads the text. A configured vision model can assist difficult reads. Photos are processed in temporary files, and uncertain words are marked `[?]`.
+
+Other optional dependencies are listed in [requirements-optional.txt](requirements-optional.txt).
 
 ## How it works
 
-```
-             PREPROCESSING (off-premises, once)                    RETRIEVAL (on-premises, every query)
- Parsed/*.md + CSV ─► clean ─► dedupe/quality ─► passages ─► index.db ─► query ─► glossary expansion ─► BM25 over passages
-                      (drop nav     (md5 dupes,     (~180 words,  (SQLite        (en/fr/es/ar terms)      (title > heading > body)
-                       boilerplate)  failed scrapes) with heading) FTS5)                │
-                                                                                         ▼
-                                       documents + snippet + confidence  ◄─ aggregate ◄─ concept coverage + "aboutness"
-                                       (or "no reliable match")              to docs      (false-positive guard)
-```
-
-1. **Cleaning** (`ingest.py`): strips images, links and markup. Lines that recur in 8 or more documents (menus, cookie
-   banners) are removed as boilerplate. Exact duplicates are merged (P16 = D5da0aed2fd, P42 = Da68d33c442,
-   P44 = Dbd6e2ef149). **18 "Statement" documents are the same scraped MSF Access landing page** (their originals too).
-   They are flagged and kept out of the index, and should be re-harvested.
-2. **Passages** (`chunker.py`): documents are split into passages of about 180 words that keep their section heading. A
-   900-page financial report can't win just by being long, and the user sees the exact paragraph that matched.
-3. **Normalisation** (`textnorm.py`): accent-insensitive (`epidémie` = `epidemie`). Arabic gets light normalisation:
-   tashkeel removed, alef/ya/ta-marbuta unified, `ال/وال/بال` prefixes stripped. Porter stemming for English via FTS5.
-4. **Multilingual glossary** (`data/glossary.csv`): "cholera" also searches *choléra, cólera, الكوليرا*. So an English
-   query finds French, Spanish and Arabic documents without any ML model. **It's a CSV a medical coordinator can edit in
-   Excel**: adapting to new terms needs no retraining.
-5. **Ranking** (`search.py`): BM25 on passages (title ×4, heading ×2, body ×1) gives candidates. These are rescored by
-   * **concept coverage**: the IDF-weighted share of the query's concepts found *in the same passage*;
-   * **aboutness**: the share of the document's passages that match, so a document *about* malnutrition beats one
-     that mentions it in passing.
-6. **False-positive guard**: every result gets a confidence (strong / partial / weak). Weak matches are hidden by
-   default. If a query term appears **nowhere** in the library, it gets the maximum weight, so "bitcoin price"
-   returns *"No reliable match. Not found anywhere: bitcoin"* instead of 10 random documents.
-
-## Optional layers (never required)
-
-| Layer | What | How |
-|---|---|---|
-| Dense, cross-lingual | `intfloat/multilingual-e5-small` (MIT licence, CPU), float16 vectors next to `index.db` | `pip install sentence-transformers` then `python scripts/build_dense.py`, then run the server with `--dense` |
-| Local AI answer | Small quantized LLM (e.g. Qwen3 1.7B Q4, ~1.1 GB) **only rephrases retrieved passages, with citations**, and says "Not found in the library" otherwise | Install Ollama, `ollama pull qwen3:1.7b`, then run the server with `--llm-model qwen3:1.7b` |
-
-These degrade gracefully. Search-only works on any device. The kit laptop adds a local LLM. Nothing breaks when the
-connection drops.
-
-## Code map
-
-```
-msf_search/
-  textnorm.py   tokenisation + accent/Arabic normalisation + stopwords (en/fr/es/ar)
-  ingest.py     load md + CSV, clean, boilerplate removal, duplicate & quality flags
-  chunker.py    heading-aware passages
-  glossary.py   multilingual query expansion from data/glossary.csv (+ data/abbreviations.csv)
-  abbrev.py     mine abbreviation definitions from the corpus (Schwartz-Hearst, no LLM)
-  index.py      build the single-file SQLite/FTS5 index (zlib-compressed text)
-  delta.py      make / apply small update files (new or revised documents)
-  search.py     retrieval, coverage/aboutness scoring, confidence, abstention, snippets
-  dense.py      OPTIONAL embeddings layer
-  llm.py        OPTIONAL grounded answer via a local model (Ollama API)
-  server.py     stdlib HTTP server: UI + JSON API (/api/search, /api/doc/<id>, /api/answer)
-  static/index.html   the field app (no CDN, works on phones, RTL-aware)
-scripts/ build_index.py · build_dense.py · demo_queries.py · evaluate.py
+```text
+Document collection
+    → clean and deduplicate
+    → split into passages
+    → build SQLite / FTS5 index
+    → expand the query across languages
+    → rank matching passages
+    → return sources, or decline when coverage is too weak
 ```
 
-## Fit with the scoring criteria
+Ranking combines BM25 with query-concept coverage, how much of a document concerns the query, and a document-type prior. Unknown query terms count against coverage, helping the system avoid confident results for questions the collection cannot support.
 
-* **Effectiveness**: passage-level BM25, multilingual expansion, coverage-based abstention (fewer false positives).
-* **Creativity**: data-quality findings (duplicates, failed scrapes); an editable multilingual glossary instead of a
-  black box; "no reliable match" as a feature.
-* **Implementability**: one 32 MB file plus Python's standard library. Runs on a Raspberry Pi, an old laptop, or a USB
-  stick. Updates = copy a new `index.db`.
-* **Cost-effectiveness**: €0 per query, no cloud, no licences; rebuilding takes 5 s.
-* **Vendor independence**: SQLite (public domain), Python, open models only as optional add-ons.
+Heavy preprocessing happens before distributing the library. Optional enrichment adds labelled summaries, multilingual keywords, and prepared Q&A. The field server can run local chat and OCR; the phone only needs a browser.
 
-## Known limitations / next steps
+| Component | Technology |
+|---|---|
+| Retrieval | Python standard library, SQLite FTS5, BM25 |
+| Languages | Editable glossary, mined abbreviations, text normalisation |
+| Interface | HTML, CSS, JavaScript; no CDN required |
+| Local AI | Ollama; Mistral 7B in the demo |
+| Printed-label OCR | Tesseract, optional Pillow preprocessing |
+| Optional extensions | Dense retrieval, vision models, HQ enrichment |
 
-* Without the dense layer, cross-lingual recall depends on glossary coverage. Extend the CSV, or build dense vectors.
-* The French/Spanish "Clinical Guideline Chapter" files are likely translations of the English chapters. Grouping them
-  into one result ("also available in FR/ES") is an easy next feature.
-* Tune the confidence thresholds with real queries from field staff; log anonymised queries to grow the glossary.
+The default AI endpoints are local. `CHAT_*`, `LLM_*`, and `VLM_*` environment variables configure chat, enrichment, and vision providers respectively; using a remote provider changes where those requests are processed.
+
+## Evaluation
+
+Measured on the saved demo index, with **565 searchable documents** and a **33.3 MB index**. These figures describe this collection and test setup.
+
+| Check | Result |
+|---|---:|
+| Known-item Recall@5, 300 sampled queries | 1.00 |
+| Known-item MRR@10 | 0.968 |
+| Hand-written evaluation Recall@5, 16 answerable queries | 0.875 |
+| False positives, 10 labelled unanswerable queries | 0/10 |
+| Off-topic queries correctly declined | 18/20 |
+
+Known-item queries sample words from their target documents, making that check optimistic for keyword retrieval. The hand-written evaluation is small; neither establishes clinical validity.
+
+Reproduce the checks after building the index:
+
+```bash
+python3 -m unittest discover -s tests -v
+python3 scripts/evaluate.py --eval data/eval_queries.csv
+python3 scripts/demo_queries.py
+```
+
+## Scope and limitations
+
+This is a hackathon prototype. Results depend on the source collection, glossary coverage, and document extraction quality. Some guideline records contain only abbreviation lists or contents pages. OCR depends on photo quality and installed language packs; a label match does not verify a medicine's identity, strength, or preparation instructions.
+
+The map is precomputed and may differ from the latest index. Evidence-trail links represent shared vocabulary, not verified citations. The radar's multi-site feed is simulated and labelled in the interface. Enrichment covers a subset of the collection, and generated text remains labelled for source checking.
+
+## Project structure
+
+```text
+msf_search/       Search, indexing, ingestion, local AI, and HTTP server
+  extras/        Label scanning, SMS, map, radar, evidence trail, and HQ tools
+  static/        Browser interface and shared theme
+scripts/         Index builds, enrichment, evaluation, updates, and demo launcher
+data/            Metadata, glossary, evaluation queries, and prepared demo assets
+tests/           Label scanning and retrieval regression tests
+```
+
+See [DEMO.md](DEMO.md) for the demo walkthrough and [API.md](API.md) for the HTTP contract. Contributor handoff notes are in [HANDOFF.md](HANDOFF.md).
+
+Source documents, inbox photos, built databases, model weights, logs, and credentials stay out of version control.

@@ -66,6 +66,18 @@ def handle(path: str, qs: dict, searcher):
 def handle_post(path: str, headers, rfile, searcher):
     """POST routes. The image arrives as the raw request body, so there is no multipart to parse
     and the phone can post the File object straight from the capture input."""
+    if path == "/api/scan/text":
+        try:
+            n = int(headers.get("Content-Length") or 0)
+            if not 0 < n <= 8192:
+                return _json({"ok": False, "reason": "enter a label name (maximum 2000 characters)"}, 400)
+            body = json.loads(rfile.read(n))
+            text = body.get("text") if isinstance(body, dict) else None
+            if not isinstance(text, str) or not text.strip() or len(text) > 2000:
+                return _json({"ok": False, "reason": "enter a label name (maximum 2000 characters)"}, 400)
+        except (ValueError, UnicodeError):
+            return _json({"ok": False, "reason": "invalid label text"}, 400)
+        return _json({**scan.match_label(searcher, text), "input_source": "user"})
     if path == "/api/scan":
         try:
             n = int(headers.get("Content-Length") or 0)

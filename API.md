@@ -4,6 +4,26 @@ Served by `python -m msf_search.server` (standard library, no internet). All res
 unless noted. **The contract is additive only: fields are never renamed or removed.** New fields are marked
 with the step that added them.
 
+## Label scan
+
+`POST /api/scan` accepts raw image bytes (maximum 10 MB). `POST /api/scan/text` accepts
+`{"text": "ORS"}` (maximum 2000 characters / 8192 request bytes) to search a user-confirmed
+or corrected printed name without another photo. The latter returns `input_source: "user"`.
+
+Both return `ok`, `terms`, `results` and, on a search, `query`, `abstained`, `ms`.
+Image responses also contain `ocr` and `bytes`. OCR below the existing confidence gate
+does not trigger a search. Recognised concepts are searched without incidental ingredient
+or packaging words; dotted/spaced known abbreviations such as `O.R.S.` are supported.
+The phone converts decodable photos to bounded JPEGs before uploading. With Pillow installed,
+the server honours EXIF orientation, normalises contrast and size, and checks four rotations
+in parallel. On macOS, the native decoder also handles HEIC uploads. Otherwise unsupported
+formats return a request to choose JPEG/PNG. OCR responses include available/missing languages.
+
+Scan result excerpts come from original indexed passages, with their provenance, rather
+than generated summaries. `reference_only: true` marks detected abbreviation/contents lists;
+the UI labels these as reference material, not treatment instructions. Related documents
+do not establish the photographed product's identity, strength or preparation instructions.
+
 ## Provenance object (on every doc, passage and result)
 
 ```json

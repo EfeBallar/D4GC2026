@@ -3,7 +3,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Library map</title>
 <style>
-  :root{--bg:#070a0f;--panel:#121820;--line:#283140;--ink:#e6edf3;--dim:#8b949e;--accent:#58a6ff;--warn:#f0883e}
+
   *{box-sizing:border-box}
   body{margin:0;padding:20px 16px;background:var(--bg);color:var(--ink);
     font:15px/1.5 -apple-system,BlinkMacSystemFont,"Segoe UI",system-ui,sans-serif}
@@ -12,15 +12,15 @@
   h1{margin:0;font-size:21px;letter-spacing:-.01em}
   header p{margin:3px 0 0;color:var(--dim);font-size:13.5px;max-width:58ch}
   .controls{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
-  input[type=search]{background:#0d1117;border:1px solid var(--line);color:var(--ink);
+  input[type=search]{background:var(--surface);border:1px solid var(--line);color:var(--ink);
     border-radius:8px;padding:8px 11px;font-size:14px;min-width:230px}
   .seg{display:flex;border:1px solid var(--line);border-radius:8px;overflow:hidden}
-  .seg button{background:#0d1117;border:0;color:var(--dim);padding:8px 12px;font-size:13px;cursor:pointer}
-  .seg button[aria-pressed=true]{background:#1f2937;color:var(--ink)}
-  .stage{position:relative;background:#05070b;border:1px solid var(--line);border-radius:12px;overflow:hidden}
+  .seg button{background:var(--surface);border:0;color:var(--dim);padding:8px 12px;font-size:13px;cursor:pointer}
+  .seg button[aria-pressed=true]{background:var(--accent-soft);color:var(--ink)}
+  .stage{position:relative;background:var(--stage);border:1px solid var(--line);border-radius:12px;overflow:hidden}
   canvas{display:block;width:100%;height:clamp(380px,56vh,580px)}
   #tip{position:absolute;pointer-events:none;opacity:0;transition:opacity .12s;max-width:290px;
-    background:#0d1117f2;border:1px solid var(--line);border-radius:8px;padding:8px 10px;
+    background:var(--card);border:1px solid var(--line);border-radius:8px;padding:8px 10px;
     font-size:12.5px;line-height:1.4;box-shadow:0 8px 20px rgba(0,0,0,.5)}
   #tip b{display:block;margin-bottom:3px;font-weight:600}
   #tip span{color:var(--dim)}
@@ -36,6 +36,7 @@
   dt{color:var(--dim)} dd{margin:0;text-align:right;font-variant-numeric:tabular-nums}
   a{color:var(--accent)}
 </style>
+<link rel="stylesheet" href="/static/theme.css">
 <script src="/static/nav.js"></script>
 <div class="wrap">
   <header>
@@ -79,17 +80,17 @@
   </div>
 </div>
 <script>
-const LANG = {en:"#58a6ff", fr:"#f778ba", es:"#f0883e", ar:"#7ee787"};
-const CLUSTER = ["#58a6ff","#f778ba","#f0883e","#7ee787","#d2a8ff","#ffdf5d","#79c0ff","#ff7b72"];
-const TIERC = {"Clinical guideline":"#7ee787","Research":"#58a6ff","Field report":"#f0883e",
-               "Communications":"#f778ba","Other":"#8b949e"};
+const LANG = {en:"#0969da", fr:"#b42675", es:"#a54a08", ar:"#1f7a3f"};
+const CLUSTER = ["#0969da","#b42675","#a54a08","#1f7a3f","#7040b0","#806300","#087c9e","#b42318"];
+const TIERC = {"Clinical guideline":"#1f7a3f","Research":"#0969da","Field report":"#a54a08",
+               "Communications":"#b42675","Other":"#6b6b70"};
 const cv = document.getElementById("c"), ctx = cv.getContext("2d"), tip = document.getElementById("tip");
 let DATA = null, mode = "language", matches = null, hover = null, pts = [];
 
 const colourOf = d =>
-  mode === "language" ? (LANG[d.language] || "#8b949e")
+  mode === "language" ? (LANG[d.language] || "#6b6b70")
   : mode === "cluster" ? CLUSTER[d.cluster % CLUSTER.length]
-  : (TIERC[d.tierLabel] || "#8b949e");
+  : (TIERC[d.tierLabel] || "#6b6b70");
 
 function tierLabel(genre){
   if (/Clinical Guideline|Study Protocol/i.test(genre)) return "Clinical guideline";
@@ -121,7 +122,7 @@ function draw(){
       if (mine.length < 5) continue;
       const cx = mine.reduce((a, p) => a + p.px, 0) / mine.length;
       const cy = mine.reduce((a, p) => a + p.py, 0) / mine.length;
-      ctx.fillStyle = "#ffffff26";
+      ctx.fillStyle = "#1d1d1f26";
       ctx.fillText(cl.label.toUpperCase(), cx, cy);
     }
   }
@@ -153,7 +154,7 @@ function renderLegend(){
     ? Object.entries(LANG).map(([k, v]) => [k.toUpperCase() + " · " + DATA.langCount[k], v])
     : mode === "cluster"
       ? DATA.clusters.map(c => [c.label + " · " + c.size, CLUSTER[c.id % CLUSTER.length]])
-      : Object.entries(DATA.tierCount).map(([k, n]) => [k + " · " + n, TIERC[k] || "#8b949e"]);
+      : Object.entries(DATA.tierCount).map(([k, n]) => [k + " · " + n, TIERC[k] || "#6b6b70"]);
   el.innerHTML = rows.map(([t, c]) =>
     `<span><i style="background:${c}"></i>${t}</span>`).join("");
 }

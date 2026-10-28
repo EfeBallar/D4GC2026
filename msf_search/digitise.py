@@ -76,13 +76,16 @@ class Tesseract:
         self.min_conf = min_conf
         self.tokens = {"prompt": 0, "completion": 0}
 
-    def transcribe(self, image: Path) -> dict:
+    def transcribe(self, image: Path, *, psm: int | None = None, timeout: int | None = None) -> dict:
         """-> {text, mean_conf (0-100), words, unreadable}"""
         env = {**os.environ, "OMP_THREAD_LIMIT": "1"}  # we parallelise across pages instead
-        tsv = subprocess.run(["tesseract", str(image), "-", "-l", self.langs, "tsv"],
-                             capture_output=True, text=True, env=env, check=True).stdout
+        command = ["tesseract", str(image), "-", "-l", self.langs]
+        if psm is not None:
+            command.extend(["--psm", str(psm)])
+        tsv = subprocess.run(command + ["tsv"], capture_output=True, text=True,
+                             env=env, check=True, timeout=timeout).stdout
         # Rebuild lines from word boxes; words tesseract is unsure of become [?], like the VLM prompt asks.
-        lines, last_par, confs = [], None, []
+        lines, last_par, confs, reliable_chars = [], None, [], 0
         for row in tsv.splitlines()[1:]:
             f = row.split("\t")
             if len(f) < 12 or f[0] != "5" or not f[11].strip():
@@ -93,12 +96,15 @@ class Tesseract:
             if not lines or lines[-1][0] != line:
                 lines.append((line, ""))
             confs.append(float(f[10]))
+            if confs[-1] >= 60:
+                reliable_chars += sum(c.isalpha() for c in f[11])
             word = f[11] if confs[-1] >= self.min_conf else "[?]"
             lines[-1] = (line, (lines[-1][1] + " " + word).strip())
             last_par = par
         return {"text": "\n".join(t for _, t in lines).strip(),
                 "mean_conf": round(sum(confs) / len(confs), 1) if confs else 0.0,
-                "words": len(confs), "unreadable": sum(1 for c in confs if c < self.min_conf)}
+                "words": len(confs), "unreadable": sum(1 for c in confs if c < self.min_conf),
+                "reliable_chars": reliable_chars}
 
 
 class VisionLLM:
