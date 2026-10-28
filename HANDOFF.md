@@ -1,3 +1,78 @@
+# STATUS 16:35 (read this first)
+
+Branch `main` on https://github.com/lilyehl/D4GC2026 (= `backend-hq`). Tags: `demo-final-3` (this state),
+`demo-chat`, `demo-final-2`, `demo-final`. API contract: **API.md** (additive only). UI additions live only in
+`msf_search/static/features.js` (index.html has exactly one extra `<script>` line).
+
+## Rules
+- **Port 8000 = the demo server. Never stop or restart it.** Test on **port 8767**.
+- Never commit `data/inbox/` images, `build/`, `models/`, `.venv-hq/`, `*.db`, `*.npy` or keys (`.gitignore` covers them).
+- Leave the Ollama server running (it serves the on-device chat model).
+- After every change: `python scripts/evaluate.py --eval data/eval_queries.csv` must stay at
+  Recall@5 ≥ 0.99 (known-item), eval-set R@5 0.875, false-positive rate 0/10, off-topic 18/20.
+
+## What works
+| Feature | Notes |
+|---|---|
+| Search | SQLite FTS5 + glossary (en/fr/es/ar) + 465 mined abbreviations + evidence tiers + confidence gate ("No reliable match") |
+| On-device chat | POST /api/chat (SSE). Strict search first; abstain = no LLM call. Local Ollama `mistral-field` (mistral 7B Q4_K_M, num_ctx 4096). Source cards, clickable [n], label, response time |
+| OCR | `scripts/digitise.py`: tesseract first, VLM escalation if `VLM_MODEL` set; per-passage provenance; inbox photos: 0.45-0.60 low-confidence badge, < 0.45 photo only + `data/transcriptions/hq_queue.jsonl` |
+| HQ enrichment | 21 docs (demo sample) with local Mistral; labelled AI summaries, grounded Q&A (quick-answer card) |
+| Delta updates | `make_delta.py` / `apply_delta.py`, ~60 KB per guideline chapter, idempotent, urgency per site profile |
+| Topics | /api/topics, chips, `?topic=malaria` |
+| Profiles | /api/profiles, boost never filter, "Boosted for your profile (turn off)" |
+| Gap log | `/gaps`, `scripts/gaps.py` |
+
+## Start commands (from `msf-search/`, "D4GC data" next to the repo)
+```
+ollama serve                                   # already running; chat model warms up at server start
+python scripts/build_index.py --data "../D4GC data" --csv data/documentation.csv          # 10 s
+.venv-hq/bin/python scripts/build_qvec.py                                                # optional vectors
+python -m msf_search.server --originals "../D4GC data/Original" --port 8767              # TEST port
+#   (the demo server on :8000 was started the same way, with --port 8000: do not touch it)
+python scripts/evaluate.py --eval data/eval_queries.csv        # regression check
+python scripts/hq_build.py --data "../D4GC data" --skip-enrich # whole HQ pipeline + report
+```
+
+## Demo script (these work)
+1. Chat: **"How do I treat post-partum haemorrhage?"** → cites P23 (misoprostol 800 µg), ~5 s to first token.
+2. Search: **"hémorragie du post-partum"** → English guideline P23 #1, labelled AI summary.
+3. Search: **"kids not getting enough food"** → MSF Nigeria malnutrition response.
+4. Search: **"Orissa"** → scanned 2000 report, page 59, "Transcribed from scan (tesseract, 0.93) · View PDF p.59".
+5. **Malaria** topic chip → 54 documents.
+6. **"bitcoin price"** → "No reliable match · Not found anywhere: bitcoin" (chat: refuses without calling the LLM).
+Avoid: "what antibiotic for cholera" (the library barely covers it) and the cholera chat question (task a).
+
+## OPEN TASKS (priority order)
+
+**(a) Cholera chat passage selection: skip abbreviation / glossary lists.** (full instructions)
+Problem: chat "oral rehydration for cholera" finds the right guideline (D3f77693628) but sends the model its
+abbreviation list (`Abbreviations and acronyms °C Degree Celsius CFR ...`), so it answers "Not found in the library".
+Fix in `msf_search/chat.py` `build_context` (and the extra-passage loop): when picking a doc's passage, skip passages
+that are mostly abbreviation lists, i.e. many short `UPPERCASE term` lines or a heading/first line containing
+"Abbreviations", "Acronyms", "Abréviations", "Sigles". Choose the doc's next best text passage by query-term
+count instead. Re-test via `curl -N -X POST localhost:8767/api/chat -d '{"question":"oral rehydration for cholera"}'`
+(expect ORS volumes cited) and the PPH question (must not regress). Run evaluate.py. Commit, push.
+
+**(b) Friendly no-match bubble + "post partum" glossary.**
+⚠ The full instructions for (b), (c) and (d) were not in this Claude Code session. Get them from the team lead.
+Known intent: when chat/search abstains, show a friendly bubble (what was not found, suggestions, link to topics)
+instead of the bare refusal; add glossary variants so "post partum" (two words, no hyphen) and similar spellings
+map to the postpartum haemorrhage concept. Keep the rule: abstain = no LLM call.
+
+**(c) Handwriting "Field notes" chip with thumbnails/badges; hide hospital.png; optional upload button.**
+Known intent: a "Field notes" topic chip listing the INBOX-* docs with image thumbnails (`/original/<image>`) and their
+OCR badge (low-confidence / photo only + queued); hide `hospital.png` from the demo (e.g. exclude INBOX-hospital via
+`--exclude-ids` or remove the file from data/inbox); optional upload button that saves a photo to data/inbox and
+queues it for digitise. Inbox images must stay out of git.
+
+**(d) Query translation + confidence tiers in chat.**
+Known intent: translate the chat question into the document languages (glossary already expands EN/FR/ES/AR terms;
+consider a translation step at HQ or with the local model) so FR/ES/AR questions retrieve English guidelines; show
+the search confidence tier (strong / partial) of the sources in the chat answer and adapt wording for partial matches.
+
+---
+
 # HANDOFF: MSF offline retrieval (D4GC 2026). Read this first.
 
 **Deadline:** upload the pitch PDF and the code ZIP by 18:00, aiming for 17:30. Pitch at 18:30, 5 minutes max.
