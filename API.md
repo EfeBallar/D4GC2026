@@ -40,8 +40,23 @@ Query params: `q` (required), `k` (default 10), `lang` (comma list, e.g. `fr,es`
    "transcribed": true,              // text came from OCR
    "provenance": {...},              // v2 step 0: provenance of the passage shown
    "doc_provenance": {...},          // v2 step 0: provenance of the document
-   "page": 59                        // v2 step 0: page of the passage (OCR'd PDFs), else null
+   "page": 59,                       // v2 step 0: page of the passage (OCR'd PDFs), else null
+   "matched_via": "text",            // v2 step 2: text | summary | qa | qvec (step 5) = kind of the best passage
+   "text_chunk_id": 18210,           // v2 step 2: best ORIGINAL passage of this doc
+   "evidence": null,                 // v2 step 2: when matched_via != text, the original passage behind it:
+                                     //   {"chunk_id", "heading", "page", "snippet", "provenance"}
+   "enriched": true,                 // v2 step 2: HQ enrichment exists for this doc (fields below may be null)
+   "importance": 1,                  //   1 essential field reference, 2 useful, 3 background, 4 archive
+   "importance_reason": "...", "audience": "clinical", "actionable": true,
+   "summary": "...",                 //   MACHINE-MADE: always show with summary_provenance / label
+   "summary_provenance": {"text_source": "parsed", "machine_generated": true, "generator": "summary",
+                          "model": "mistral:7b-instruct", ...},
+   "topics": ["measles", "vaccination"], "countries": ["Chad"], "situation": "outbreak"
  }],
+ "quick_answer": null,               // v2 step 2: set when the top hit is an HQ Q&A pair:
+                                     //   {"doc_id", "title", "question", "answer", "evidence_quote",
+                                     //    "evidence": {...original passage...}, "original_name",
+                                     //    "provenance": {...generator "qa"...}, "label": "AI-prepared answer ..."}
  "weaker_matches": [...],            // same shape; hidden by default in the UI
  "abstained": false,                 // true = "No reliable match"
  "reason": "", "ms": 2.6}
@@ -69,4 +84,9 @@ Searches with no reliable match (logged to `logs/unanswered.jsonl`):
 ```
 
 ## GET /static/<file>
-Static assets, e.g. `/static/features.js` (UI rendering helpers for the GUI).
+Static assets. `/static/features.js` holds the UI rendering helpers (pure functions returning HTML):
+`renderQuickAnswer(r)`, `renderProvenance(x)`, `renderImportance(x)`, `renderSummary(x)`, `renderEvidence(x)`,
+`renderTopicChips(topics)`, `renderProfilePicker(profiles)`, also on `window.MSFFeatures`.
+
+Ranking notes: confidence (coverage) first; inside a confidence level, score × evidence tier × importance
+prior (importance applied after the gate). Every doc appears once; summary/Q&A passages count for their doc.
