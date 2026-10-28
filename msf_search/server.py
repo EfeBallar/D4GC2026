@@ -69,6 +69,7 @@ def make_handler(searcher: Searcher, originals: list[Path], llm_model: str | Non
                                    "n_docs": searcher.n_docs,
                                    "index_mb": round(Path(searcher.index_path).stat().st_size / 1e6, 1),
                                    "importance_distribution": searcher.importance_distribution(),
+                                   "question_vectors": searcher.qvec is not None,
                                    "llm": bool(llm_model), "originals": bool(originals)})
             if u.path == "/api/answer":
                 if not llm_model:
@@ -124,7 +125,7 @@ def main():
             pass
     s = Searcher(a.index, a.glossary, dense=dense, abbreviations_path=a.abbrev, qvec=qvec,
                  profiles_path=a.profiles)
-    print("question vectors:", f"on ({len(qvec.chunk_ids)} vectors)" if qvec else "off")
+    print("question vectors:", f"on ({len(qvec.chunk_ids)} vectors)" if qvec else "off", flush=True)
     orig = [Path(f) for f in (a.originals, a.inbox) if f and Path(f).is_dir()]
     print(f"MSF library: {s.n_docs} documents. Open http://localhost:{a.port}")
     ThreadingHTTPServer((a.host, a.port), make_handler(s, orig, a.llm_model, a.gap_log or None)).serve_forever()

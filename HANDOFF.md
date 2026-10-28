@@ -43,6 +43,13 @@ python scripts/demo_queries.py ["query" ...]   ·   python scripts/evaluate.py
 
 ## 2. Tasks, in priority order (owner suggestions for 4 people)
 
+> **Status 15:50 (MASTER TASK v2, branch backend-hq):** steps 0-8 implemented and committed: provenance on
+> every doc/passage/result, tesseract-first OCR, HQ enrichment (local Mistral, demo sample), synthetic
+> summary/Q&A passages + quick answer, topics (/api/topics), optional question vectors (measured: no gain),
+> field profiles (/api/profiles), scripts/hq_build.py, data/eval_queries.csv + scripts/ablation.py.
+> UI additions live ONLY in msf_search/static/features.js (index.html has one extra line). API.md is the contract.
+> Missing: data/inbox/field_note.jpg (not on this machine).
+
 > **Status 14:50:** tasks 1 and 4 done, plus the live online/offline pill and delta updates (see README).
 > Rebuild the index (`build_index.py`) before running anything: the `docs` table has a new `year` column.
 > Task 4 finding: the "pph treatment oxytocin" gap is **not** an abbreviation problem. "pph" already
