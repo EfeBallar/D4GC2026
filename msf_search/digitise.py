@@ -25,6 +25,7 @@ from pathlib import Path
 
 PROMPT = ("Transcribe this page exactly. Keep all numbers, doses and units verbatim. "
           "Mark unreadable words as [?]. Output only the transcription, as Markdown.")
+PHOTO_ONLY_BELOW = 0.45   # below: show the photo only, queue for HQ; 0.45-0.60: "low-confidence" badge
 IMAGE_EXT = {".jpg": "image/jpeg", ".jpeg": "image/jpeg", ".png": "image/png"}
 _UNREADABLE = re.compile(r"\[\?\]")
 _SAFE = re.compile(r"[^A-Za-z0-9_-]+")
@@ -202,6 +203,13 @@ def digitise(item: dict, tess, vlm, out_dir: str, dpi: int = 150, workers: int =
             "engines": {"tesseract": item["pages"] - n_vlm, "vlm": n_vlm},
             "page_info": [{k: r[k] for k in ("page", "engine", "model", "mean_conf", "unreadable_ratio")}
                           for r in recs]}
+    if meta["ocr_confidence"] is not None and meta["ocr_confidence"] < PHOTO_ONLY_BELOW:
+        # Too unreliable to show as text: the field gets the photo only, HQ queues it for a VLM / human.
+        meta["status"] = "photo_only_queued"
+        with (out / "hq_queue.jsonl").open("a", encoding="utf-8") as q:
+            q.write(json.dumps({"id": item["id"], "original": item["path"].name, "ocr_confidence": meta["ocr_confidence"],
+                                "reason": "tesseract confidence below %.2f" % PHOTO_ONLY_BELOW,
+                                "queued_at": meta["created_at"]}) + "\n")
     md_path.write_text(md + "\n", encoding="utf-8")
     meta_path.write_text(json.dumps(meta, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
     shutil.rmtree(cache, ignore_errors=True)

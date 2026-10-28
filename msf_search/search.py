@@ -368,6 +368,9 @@ class Searcher:
         r.update({k: meta[k] for k in ("enriched", "importance", "importance_reason", "audience", "actionable",
                                         "summary", "summary_provenance", "topics", "countries", "situation")})
         r["evidence"] = self._evidence(r, concepts) if r["matched_via"] != "text" else None
+        conf = meta["provenance"]["ocr_confidence"]
+        r["ocr_status"] = (None if meta["provenance"]["text_source"] == "parsed" or conf is None else
+                           "photo_only_queued" if conf < 0.45 else "low_confidence" if conf < 0.60 else "ok")
 
     def _merge_qvec(self, query, results, unknown_w, total_w, languages, genres, allowed):
         """RRF (k=60) of keyword and question-vector rankings. A vector match lifts a doc to "medium"

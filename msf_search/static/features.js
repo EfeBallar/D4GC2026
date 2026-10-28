@@ -36,6 +36,10 @@
 
   function renderProvenance(x) {
     const p = x.provenance || {}, out = [];
+    if (x.ocr_status === "photo_only_queued") {
+      out.push(`<span class="fx-b fx-ai">Photo only: handwriting unreadable by OCR · queued for HQ transcription ${viewLink(x, x.page)}</span>`);
+      return out.join("");
+    }
     if (p.text_source && p.text_source !== "parsed") {
       const conf = p.ocr_confidence != null ? `, confidence ${Number(p.ocr_confidence).toFixed(2)}` : "";
       out.push(`<span class="fx-b fx-ocr">Transcribed from scan/handwriting (${esc(ENGINE[p.text_source] || p.text_source)}${conf}) · check the original ${viewLink(x, x.page)}</span>`);
@@ -151,6 +155,7 @@
       const h3 = el.querySelector("h3");
       if (h3) h3.insertAdjacentHTML("afterend", renderSummary(x));
       const snip = el.querySelector(".snip");
+      if (snip && x.ocr_status === "photo_only_queued") snip.textContent = "(no reliable text: open the photo)";
       if (snip && x.matched_via && x.matched_via !== "text") {
         // label sits right above the machine-made text, so the duplicate badge goes
         el.querySelectorAll(".badges .fx-ai").forEach(b => { if (b.textContent === LABEL[x.matched_via]) b.remove(); });

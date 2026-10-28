@@ -1,0 +1,24 @@
+{
+  "source": "tesseract",
+  "model": "tesseract 5.5.1 (eng)",
+  "pages": 1,
+  "unreadable_count": 8,
+  "original": "field_note.jpg",
+  "seconds": 0.3,
+  "created_at": "2026-10-28 16:04:28",
+  "text_source": "ocr_tesseract",
+  "ocr_confidence": 0.518,
+  "engines": {
+    "tesseract": 1,
+    "vlm": 0
+  },
+  "page_info": [
+    {
+      "page": 1,
+      "engine": "tesseract",
+      "model": "tesseract 5.5.1 (eng)",
+      "mean_conf": 51.8,
+      "unreadable_ratio": 0.286
+    }
+  ]
+}

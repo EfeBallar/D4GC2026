@@ -92,7 +92,7 @@ def chunk_provenance(d, heading: str) -> tuple:
     """(text_source, ocr_confidence, machine_generated, generator, model, generated_at) for a text passage.
     OCR passages carry their own page's engine and confidence; the kept embedded text layer is "parsed"."""
     m = _PAGE.match(heading or "")
-    if d.text_source == "parsed" or (d.page_info and not m):
+    if d.text_source == "parsed" or heading == "Embedded text layer":  # kept original PDF text layer
         return ("parsed", None, 0, None, None, None)
     page = d.page_info.get(int(m.group(1)), {}) if m else {}
     if page:
