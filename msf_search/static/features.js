@@ -117,7 +117,9 @@
   .fx-topics{display:flex;gap:6px;flex-wrap:wrap;margin:8px 0}.fx-chip{padding:3px 10px;border-radius:999px;font-size:13px}
   .fx-chip span{color:var(--mute);font-size:12px}.fx-chip.on{background:var(--ink);color:var(--bg)}
   .fx-prof{font-size:13px;color:var(--mute);display:flex;gap:6px;align-items:center}
-  .fx-boost{font-size:13px;color:var(--mute);margin:6px 2px}.fx-boost a{color:inherit}`;
+  .fx-boost{font-size:13px;color:var(--mute);margin:6px 2px}.fx-boost a{color:inherit}
+  .pill.off{background:var(--low-soft)!important;color:var(--mute)!important;border-color:var(--line)!important}
+  .pill.off b{color:var(--mute)!important}`;  /* offline = grey: still fully working, just no network */
   const st = document.createElement("style"); st.textContent = css; document.head.appendChild(st);
 
   /* ---------- glue for the current index.html (a new GUI can ignore everything below) ---------- */

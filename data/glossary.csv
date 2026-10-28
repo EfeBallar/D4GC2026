@@ -3,7 +3,7 @@ tuberculosis,tuberculosis|tb,tuberculose,tuberculosis,السل
 malaria,malaria,paludisme|malaria,malaria|paludismo,الملاريا
 cholera,cholera,choléra,cólera,الكوليرا
 measles,measles,rougeole,sarampión,الحصبة
-malnutrition,malnutrition|undernutrition|malnourished,malnutrition|dénutrition|malnutris,desnutrición|malnutrición|desnutridos,سوء التغذية
+malnutrition,malnutrition|undernutrition|malnourished|enough food|underfed|hunger,malnutrition|dénutrition|malnutris|faim,desnutrición|malnutrición|desnutridos,سوء التغذية
 hiv,hiv|aids,vih|sida,vih|sida,فيروس نقص المناعة|الإيدز
 vaccination,vaccination|vaccine|vaccines|immunization|immunisation,vaccination|vaccin|vaccins,vacunación|vacuna|vacunas,التطعيم|اللقاح|التلقيح
 snakebite,snakebite|snake bite|snakebites|envenoming,morsure de serpent|envenimation,mordedura de serpiente|envenenamiento,لدغة الأفعى|لدغات الثعابين
@@ -31,7 +31,7 @@ leishmaniasis,leishmaniasis|kala azar,leishmaniose,leishmaniasis,الليشما�
 antibiotic,antibiotic|antibiotics,antibiotique|antibiotiques,antibiótico|antibióticos,المضادات الحيوية
 sanitation,water and sanitation|sanitation|hygiene,eau et assainissement|assainissement|hygiène,agua y saneamiento|saneamiento|higiene,المياه والصرف الصحي|النظافة
 hospital,hospital|hospitals,hôpital|hôpitaux,hospital|hospitales,مستشفى|المستشفيات
-children,child|children|paediatric|pediatric,enfant|enfants|pédiatrique,niño|niños|pediátrico,الأطفال|طفل
+children,child|children|kids|paediatric|pediatric,enfant|enfants|pédiatrique,niño|niños|pediátrico,الأطفال|طفل
 attacks on health care,attack on hospital|attacks on health care|attacks on medical,attaque contre l'hôpital|attaques contre les soins,ataque al hospital|ataques contra la atención,الهجمات على|استهداف المستشفيات
 syria,syria,syrie,siria,سوريا
 yemen,yemen,yémen,yemen,اليمن
