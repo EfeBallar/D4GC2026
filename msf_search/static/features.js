@@ -39,15 +39,18 @@
     if (p.text_source && p.text_source !== "parsed") {
       const conf = p.ocr_confidence != null ? `, confidence ${Number(p.ocr_confidence).toFixed(2)}` : "";
       out.push(`<span class="fx-b fx-ocr">Transcribed from scan/handwriting (${esc(ENGINE[p.text_source] || p.text_source)}${conf}) · check the original ${viewLink(x, x.page)}</span>`);
+      if (p.ocr_confidence != null && p.ocr_confidence < 0.6)
+        out.push(`<span class="fx-b fx-ai">Low-confidence transcription: check the original ${viewLink(x, x.page)}</span>`);
     }
     if (p.machine_generated && LABEL[p.generator]) out.push(`<span class="fx-b fx-ai">${esc(LABEL[p.generator])}</span>`);
     if (x.matched_via === "qvec") out.push(`<span class="fx-b fx-ai">${LABEL.qvec}</span>`);
     return out.join("");
   }
 
+  let SHOW_IMPORTANCE = true;  // off while every enriched doc has the same importance (badge would say nothing)
   function renderImportance(x) {
     const out = [];
-    if (x.importance) out.push(`<span class="fx-b fx-imp${x.importance}" title="${esc(x.importance_reason || "")}">${IMPORTANCE[x.importance] || ""}</span>`);
+    if (x.importance && SHOW_IMPORTANCE) out.push(`<span class="fx-b fx-imp${x.importance}" title="${esc(x.importance_reason || "")}">${IMPORTANCE[x.importance] || ""}</span>`);
     if (x.actionable) out.push(`<span class="fx-b fx-act">Actionable</span>`);
     return out.join("");
   }
@@ -89,6 +92,12 @@
       `<option value="${esc(p.id)}"${p.id === active ? " selected" : ""}>${esc(p.label)}</option>`).join("")}</select></label>`;
   }
 
+  _fetchInfo();
+  function _fetchInfo() {
+    window.fetch("/api/info").then(r => r.json()).then(i => {
+      SHOW_IMPORTANCE = Object.keys(i.importance_distribution || {}).length > 1;
+    }).catch(() => {});
+  }
   window.MSFFeatures = {renderQuickAnswer, renderProvenance, renderImportance, renderSummary, renderEvidence,
                         renderTopicChips, renderProfilePicker, originalHref};
   Object.assign(window, {renderQuickAnswer, renderProvenance, renderImportance, renderTopicChips, renderProfilePicker});

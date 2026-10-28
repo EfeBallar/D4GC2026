@@ -19,6 +19,7 @@ UI rule: never show machine-made text without its label (see `static/features.js
 - Q&A: "AI-prepared answer (made at HQ from this document) · check the source"
 - OCR: "Transcribed from scan/handwriting (<engine>, confidence X) · check the original" + link to the
   original at `#page=N`.
+- OCR with `ocr_confidence` < 0.6: also "Low-confidence transcription: check the original" + photo/PDF link.
 
 ## GET /api/search
 
@@ -78,6 +79,8 @@ Document metadata plus full `text`, including `provenance`.
 ```json
 {"report": {"documents": 582, "languages": {...}, "genres": {...}, "index_mb": 33.1, ...},
  "library_version": "2026-10-28-1530", "n_docs": 561, "index_mb": 33.1,
+ "importance_distribution": {"1": 17},   // enriched docs per importance level; the UI hides the badge
+                                         // while only one level occurs
  "llm": false, "originals": true}
 ```
 

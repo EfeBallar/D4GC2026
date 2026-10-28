@@ -65,6 +65,7 @@ def make_handler(searcher: Searcher, originals: list[Path], llm_model: str | Non
                 return self._json({"report": searcher.report, "library_version": searcher.library_version,
                                    "n_docs": searcher.n_docs,
                                    "index_mb": round(Path(searcher.index_path).stat().st_size / 1e6, 1),
+                                   "importance_distribution": searcher.importance_distribution(),
                                    "llm": bool(llm_model), "originals": bool(originals)})
             if u.path == "/api/answer":
                 if not llm_model:
@@ -96,6 +97,9 @@ def main():
     ap.add_argument("--abbrev", default="data/abbreviations.csv", help='"" to disable')
     ap.add_argument("--originals", default=None, help="optional folder with original PDF/HTML files")
     ap.add_argument("--inbox", default="data/inbox", help="photos digitised into Field Note docs (served as originals)")
+    ap.add_argument("--qvec-model", default="models/potion-multilingual-128M",
+                    help="HyDE question vectors (needs model2vec + build/qvec.npy); off if missing")
+    ap.add_argument("--qvec-threshold", type=float, default=0.55)
     ap.add_argument("--gap-log", default="logs/unanswered.jsonl", help='searches with no reliable match; "" to disable')
     ap.add_argument("--host", default="0.0.0.0")
     ap.add_argument("--port", type=int, default=8000)
@@ -107,7 +111,15 @@ def main():
     if a.dense:
         from .dense import DenseIndex
         dense = DenseIndex.load(a.index, a.dense, a.dense_high)
-    s = Searcher(a.index, a.glossary, dense=dense, abbreviations_path=a.abbrev)
+    qvec = None
+    if a.qvec_model and Path(a.qvec_model).exists():  # optional layer: core needs no numpy / model2vec
+        try:
+            from .qvec import QVecIndex
+            qvec = QVecIndex.load(str(Path(a.index).parent), a.qvec_model, a.qvec_threshold)
+        except ImportError:
+            pass
+    s = Searcher(a.index, a.glossary, dense=dense, abbreviations_path=a.abbrev, qvec=qvec)
+    print("question vectors:", f"on ({len(qvec.chunk_ids)} vectors)" if qvec else "off")
     orig = [Path(f) for f in (a.originals, a.inbox) if f and Path(f).is_dir()]
     print(f"MSF library: {s.n_docs} documents. Open http://localhost:{a.port}")
     ThreadingHTTPServer((a.host, a.port), make_handler(s, orig, a.llm_model, a.gap_log or None)).serve_forever()
