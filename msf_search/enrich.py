@@ -22,9 +22,13 @@ SYSTEM = ("You prepare a humanitarian medical library (Doctors Without Borders) 
           "Use ONLY the document text given. Never add outside facts. Copy doses, numbers and units exactly. "
           "Reply with one JSON object only.")
 
+# Text FIRST, instructions LAST: if a provider truncates a long prompt, it loses text, not the instructions.
 PROMPT = """Document id: {id} | catalogue genre: {genre} | language: {language} | title: {title}{window}
 
-Return a JSON object with exactly these keys:
+TEXT:
+{text}
+
+END OF TEXT. Using only the text above, return a JSON object with exactly these keys:
 "doc_type": corrected genre, 2-4 words
 "audience": one of clinical | operational | advocacy | research | historical
 "actionable": true if it tells a field worker what to do (protocol, dose, procedure), else false
@@ -40,10 +44,7 @@ Return a JSON object with exactly these keys:
 "situation": one of conflict | outbreak | malnutrition | displacement | maternal | disaster | regular
 "qa": 8 objects {{"question", "answer", "evidence_quote", "lang"}}: 5 with lang "en", 1 "fr", 1 "es", 1 "ar".
   Questions a field worker would ask, written in that language. answer: short, only from the text.
-  evidence_quote: one sentence copied EXACTLY, character for character, from the text below.
-
-TEXT:
-{text}"""
+  evidence_quote: one sentence copied EXACTLY, character for character, from the text above."""
 
 # Default provider: a local open-weight model via Ollama's OpenAI-format endpoint (no key, no vendor).
 # Override with env LLM_BASE_URL / LLM_API_KEY / LLM_MODEL (e.g. the Mistral API) without code changes.
