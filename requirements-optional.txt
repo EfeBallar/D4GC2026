@@ -1,0 +1,5 @@
+# Core needs NOTHING beyond Python 3.10+ (sqlite3 with FTS5 is built in).
+# Optional dense / cross-lingual layer:
+sentence-transformers>=3.0
+numpy
+# Optional local LLM answers: install Ollama (https://ollama.com) and `ollama pull qwen3:1.7b`

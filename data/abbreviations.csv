@@ -1,0 +1,466 @@
+abbr,expansions,count,docs
+MSF,médecins sans frontières,407,183
+TB,tuberculosis,111,40
+MFA,ministry of foreign affairs,33,3
+ARV,antiretroviral|antiretrovirals,29,7
+ART,antiretroviral therapy,26,20
+DRC,democratic republic of congo,25,20
+DANIDA,danish agency for development assistance,21,1
+WFP,world food programme|world food program,20,8
+DDC,development and cooperation,13,2
+RDT,rapid diagnostic tests|rapid diagnostic test,13,9
+HIV,human immunodeficiency virus,12,10
+ICRC,international committee of the red cross,12,8
+NGO,non-governmental organisations|non-governmental organisation|nongovernmental organizations|nongovernmental organisations,12,7
+RRC,relief and rehabilitation commission,12,1
+DST,drug susceptibility testing,10,9
+IDP,internally displaced persons|internally displaced people|internally displaced person,9,4
+HCR,high commissioner for refugees,8,2
+HCV,hepatitis c virus,8,6
+IPC,infection prevention and control|integrated food security phase classification,8,7
+PHA,public health action,8,8
+POC,point-of-care,8,6
+RPF,rwandan patriotic front,8,4
+STD,sexually transmitted diseases|sexually transmitted disease,8,2
+AE,adverse events,7,5
+IQR,interquartile range|interquartile ranges,7,7
+OCV,oral cholera vaccine|oral cholera vaccines,7,5
+PPE,protective equipment|plant and equipment,7,6
+RSF,rapid support forces,7,6
+DNDi,drugs for neglected diseases initiative,6,6
+EVD,ebola virus disease,6,5
+ICJ,international court of justice,6,4
+IHL,international humanitarian law,6,6
+IPV,inactivated poliovirus vaccines|inactivated poliovirus,6,1
+PCR,polymerase chain reaction,6,4
+PCV,pneumococcal conjugate vaccines|pneumococcal conjugate vaccine,6,4
+RV,rotavirus vaccines,6,1
+AMR,antimicrobial resistance,5,3
+BDQ,bedaquiline,5,2
+CIDA,canadian international development agency,5,1
+CRP,c-reactive protein,5,3
+DFID,department for international development,5,5
+DLM,delamanid,5,2
+EU,european union,5,4
+GTN,global tuberculosis network,5,1
+HPV,human papillomavirus,5,4
+ICTY,international criminal tribunal for the former yugoslavia|international criminal tribunals for the former yugoslavia,5,2
+IP,intellectual property,5,5
+LJ,lowenstein-jensen,5,4
+LSF,liberté sans frontières,5,2
+MDR,multidrug-resistant,5,4
+MTB,mycobacterium tuberculosis,5,4
+MoH,ministry of health,5,5
+UNHCR,united nations high commissioner for refugees,5,3
+AHD,advanced hiv disease,4,2
+CIPHER,collaborative initiative for paediatric hiv education and research,4,1
+CQ,chloroquine,4,3
+HAT,human african trypanosomiasis,4,3
+KHC,kigali hospital complex,4,2
+LuxOR,luxembourg operational research,4,4
+MOH,ministry of health,4,3
+OCA,operational centre amsterdam,4,4
+PrEP,pre-exposure prophylaxis,4,1
+RDC,république démocratique du congo|república democrática del congo,4,4
+RRF,rapid reaction force,4,2
+TLA,thin layer agar,4,3
+VVM,vaccine vial monitor,4,2
+AI,artificial intelligence,3,2
+AKI,acute kidney injury,3,1
+ALIMA,alliance for international medical action,3,2
+ALT,alanine aminotransferase,3,2
+AMS,antimicrobial stewardship,3,2
+AST,aspartate transaminase|aspartate aminotransferase|antimicrobial susceptibility tests,3,3
+BMI,body mass index,3,2
+CDV,core data variables,3,1
+CEC,core eligibility criteria,3,1
+CFR,case fatality ratio,3,3
+COS,core outcome set,3,1
+CRAT,centre de référence sur les agents tératogènes,3,3
+CTC,controlled temperature chain|cholera treatment centre|cholera treatment centers,3,3
+DALY,disability-adjusted life-years,3,2
+DBS,dry blood spots|dried blood spots|dried blood sport,3,3
+DOTS,directly observed treatment short course,3,1
+DR,drug-resistant,3,3
+EMR,electronic medical record,3,2
+FDA,food and drug administration,3,3
+FSW,female sex workers,3,2
+GSK,glaxosmithkline,3,1
+HAART,highly active antiretroviral therapy,3,3
+HART,humanitarian advocacy and representation team,3,1
+HC,hierarchical clustering|health centres|health centers,3,2
+HIC,high-income countries,3,3
+HRW,human rights watch,3,2
+HTC,hiv testing and counselling,3,2
+IGA,international general assembly,3,3
+LF,lassa fever,3,1
+LTFU,lost to follow-up,3,2
+MHRA,medicines and healthcare products regulatory agency,3,3
+MIC,minimum inhibition concentration|middle-income countries|middle-income,3,2
+MOU,memorandum of understanding,3,3
+MTU,multi-tube units,3,1
+OAT,opioid agonist treatment,3,1
+OMS,organización mundial de la salud,3,3
+OPD,outpatient department,3,3
+PCC,probe check control,3,1
+PIH,partners in health,3,3
+PTB,pulmonary tb,3,3
+PTSD,post-traumatic stress disorder,3,2
+RIF,rifampicin,3,3
+RR,relative risk,3,3
+SAE,serious adverse events,3,3
+SAF,sudanese armed forces,3,3
+UNPROFOR,united nations protection forces|united nations protection force in the former yugoslavia|united nations protection force,3,1
+AFB,acid-fast bacilli,2,2
+AFP,agence france-presse|agence france press,2,2
+AMFm,affordable medicines facility–malaria,2,1
+ANC,antenatal care,2,1
+AQ,amodiaquine,2,2
+ASP,assembly of state parties,2,1
+AUD,australian dollar|alcohol use disorder,2,2
+BSI,bloodstream infections,2,2
+BUN,blood urea nitrogen,2,1
+CAD,computer-aided detection,2,2
+CAG,community art groups,2,2
+CDC,centers for disease control and prevention|centers for disease control,2,2
+CHW,community health workers,2,2
+CIG,country income groups|country income group,2,1
+CIOMS,council for international organizations of medical sciences,2,1
+CIPRB,centre for injury prevention and research bangladesh,2,1
+CMR,crude mortality rates|crude mortality rate,2,2
+CPS,country health policies and systems|chimio prévention du paludisme saisonnier,2,2
+CPT,committee for the prevention of torture|carriage paid to,2,2
+CSO,civil society organisations,2,2
+CT,computed tomography,2,2
+CXR,chest x-ray,2,2
+DAA,direct-acting antiviral,2,2
+DAG,directed acyclic graphs|directed acyclic graph,2,2
+DCI,dénomination commune internationale|denominación común internacional,2,2
+DHS,demographic health survey program|demographic and health surveys,2,1
+DOT,directly observed therapy strategy|directly observed therapy,2,2
+DS,drug-susceptible|drug-sensitive,2,2
+EFV,efavirenz,2,2
+EID,early infant diagnosis,2,2
+ELISA,enzyme-linked immunosorbent assay|enzyme-linked immunoassays,2,2
+ELISpot,enzyme-linked immunospot assay|enzyme-linked immunospot,2,1
+ELWA,eternal love winning africa,2,1
+EMT,emergency medical teams,2,1
+EP,european parliament,2,1
+EPI,extended programme of immunization|expanded program on immunization,2,2
+EPIET,epidemiology training,2,2
+EPTB,extrapulmonary tb|extra-pulmonary tb,2,2
+ERB,ethics review board,2,2
+ESD,entrance skin dose,2,1
+FDC,fixed-dose combinations,2,2
+FM,fluorescence microscopy,2,1
+FQ,fluoroquinolones,2,2
+GDF,global drug facility,2,2
+GEP,good epidemiological practice,2,1
+GLASS,global antimicrobial resistance surveillance system|global antimicrobial resistance and use surveillance system,2,2
+HBV,hepatitis b virus,2,1
+HFIAS,household food insecurity access scale,2,1
+HPN,humanitarian practice network,2,1
+HR,hazard ratios,2,2
+IARC,international agency for research on cancer,2,2
+IAS,international accounting standards,2,2
+ID,identifiers|identiﬁcation,2,2
+IFPRI,international food policy research institute,2,1
+IFRS,international financial reporting standards,2,2
+IFU,instructions for user|instructions for use,2,2
+IMF,international monetary fund,2,2
+IMIA,informatics association,2,1
+IMT,international military tribunal,2,1
+IO,intraosseous|intra-osseuse,2,2
+ITT,intention to treat,2,2
+KEMRI,kenyan medical research institute|kenya medical research institute,2,2
+LASV,lassa mammarenavirus,2,1
+LDS,low dead space,2,1
+LHW,lay health workers|lay health worker,2,1
+LMIC,lower middle-income countries|low-income and middle-income countries,2,2
+LTBI,latent tb infection,2,2
+MAC,mycobacterium avium complex|multi-age cohorts,2,2
+MCH,maternal and child health,2,2
+MGIT,mycobacteria growth indicator tube,2,2
+MHC,mobile health clinics,2,1
+MIP,mother-infant pairs,2,1
+MMR,mumps and rubella|measles-mumps-rubella,2,1
+MOHCC,ministry of health and child care,2,1
+MR,measles-rubella|maternal recall,2,2
+MSM,men who have sex with men,2,2
+MSS,mobility scoring system,2,1
+MTCT,mother-to-child transmission of hiv|mother-to-child transmission,2,1
+MUAC,middle upper arm circumference|mid-upper-arm circumference,2,2
+NCD,non-communicable diseases,2,2
+NECT,nifurtimox–eﬂornithine combination therapy|nifurtimox-eﬂ ornithine combination therapy,2,2
+NICU,neonatal intensive care unit,2,1
+NPV,negative predictive value,2,1
+NRS,northern rakhine state|north rakhine state,2,1
+NSP,needle and syringe programs,2,1
+NTLP,national tb and leprosy programme|national de tuberculose et de lèpre,2,1
+NTM,nontuberculous mycobacteria,2,1
+NTP,national tb programmes,2,2
+NVP,nevirapine,2,2
+OCHA,office for the coordination of humanitarian affairs,2,2
+PACD,proactive case detection,2,1
+PDS,public distribution system,2,1
+PERCH,pneumonia etiology research for child health,2,1
+PHC,primary healthcare centres|primary health centre,2,2
+PI,protease inhibitor|principal investigator,2,2
+PLHIV,people living with hiv,2,2
+PLWH,people living with hiv,2,1
+PMTCT,prevention of mother-to-child transmission of hiv|prevention of mother-to-child-transmission,2,1
+PPR,preparedness and response,2,2
+PPV,positive predictive value,2,2
+PV,pharmacovigilance,2,2
+PoC,protection of civilians,2,2
+RECO,relais communautaire,2,1
+RMP,rifampicin,2,2
+RS,republika srpska|rakhine state,2,2
+RSL,regional screening levels|regional screening level,2,1
+RUF,ready-to-use food,2,2
+RUTF,ready-to-use therapeutic food,2,1
+SAM,severe acute malnutrition,2,2
+SCC,special criminal court,2,1
+SDG,sustainable development goals,2,1
+SHCH,sihanouk hospital centre of hope,2,1
+SMC,seasonal malaria chemoprevention,2,2
+SOD,sudden-onset disasters,2,1
+SP,sulphadoxine–pyrimethamine,2,2
+SRH,sexual and reproductive health,2,2
+SVA,sample volume adequacy,2,1
+TFC,therapeutic feeding centers|therapeutic feeding center,2,2
+TFV,trust fund for victims,2,1
+TIFO,terragraphics international foundation,2,1
+TPP,transpacific partnership agreement|target product profile,2,2
+TPT,tuberculosis preventive therapy,2,1
+TT,tetanus toxoid vaccines,2,1
+UI,uncertainty intervals|uncertainty interval,2,1
+USAID,us agency for international development,2,2
+VCT,voluntary counselling and hiv testing,2,2
+VLS,viral load suppression,2,1
+VT,vaccine-type|vaccine-targeted serotypes,2,2
+WHZ,weight-for-height z-scores|weight-for-height z-score,2,1
+WTO,world trade organization,2,2
+ZN,ziehl-neelsen,2,1
+ABC,abacavir,1,1
+ABG,arterial blood gas,1,1
+ACC,aids care china,1,1
+ACF,action contre la faim,1,1
+ADB,asian development bank,1,1
+ADR,adverse drug reactions,1,1
+ADT,algorithmes de décision thérapeutique,1,1
+AGYW,adolescent girls and young women,1,1
+AICF,action internationale contre la faim,1,1
+ALDS,automated lameness detection systems,1,1
+ALOS,average length of stay,1,1
+ALP,alkaline phosphatase,1,1
+AP,associated press,1,1
+APH,adolescents living with perinatally acquired hiv,1,1
+APP,acute phase proteins,1,1
+AR,africa,1,1
+ARI,acute respiratory infections,1,1
+ASCVD,atherosclerotic cardiovascular disease,1,1
+ASH,aweil state hospital,1,1
+BCCOE,butaro cancer centre of excellence,1,1
+BFS,baby friendly space,1,1
+BP,blood pressure,1,1
+BSA,bosnian-serb forces,1,1
+CATT,card agglutination test for trypanosomiasis,1,1
+CBME,competency-based medical education,1,1
+CCD,core case definition,1,1
+CCT,city of cape town,1,1
+CEM,classiﬁcation expectation maximization,1,1
+CEPI,coalition for epidemic preparedness innovations,1,1
+CHU,community health units,1,1
+CIA,central intelligence agency,1,1
+CLSI,clinical and laboratory standards institute,1,1
+CMC,case management centre,1,1
+CRDA,christian relief and development association,1,1
+CRS,congenital rubella syndrome,1,1
+CRUO,centre de references des urgences obstericales,1,1
+CS,cycloserine,1,1
+CTU,cholera treatment unit,1,1
+CTX,cotrimoxazole,1,1
+CVA,cerebrovascular accidents,1,1
+CVD,cardiovascular disease,1,1
+DAT,direct agglutination test,1,1
+DAZ,dar al zahara,1,1
+DDD,dichlorodiphenyldichloroethane,1,1
+DDE,dichlorodiphenyldichloroethylene,1,1
+DH,district hospitals,1,1
+DTP,diphteria-tetanus-pertussis vaccine,1,1
+EA,enumeration area,1,1
+EAPC,european association for palliative care,1,1
+EC,european community,1,1
+ECC,emergency coordination centre,1,1
+ECCC,extraordinary chambers in the courts of cambodia,1,1
+EEC,european economic community,1,1
+EIA,enzyme immunoassay,1,1
+EMA,european medicines agency,1,1
+EMB,ethambutol,1,1
+ENPT,extended normalization process theory,1,1
+EOC,emergency operations centre,1,1
+ESBL,extended-spectrum beta-lactamase,1,1
+ESRD,end-stage renal disease,1,1
+EXW,ex works,1,1
+FAO,food and agricultural organisation,1,1
+FATA,federally administered tribal areas,1,1
+FCA,free carrier,1,1
+FCS,food consumption score,1,1
+FGM,female genital mutilation,1,1
+FLQ,fluoroquinolones,1,1
+FLW,frontline workers,1,1
+FRY,federal republic of yugoslavia,1,1
+FSB,federal security bureau,1,1
+FSLP,food security and livelihoods program,1,1
+FTA,free trade agreements,1,1
+GA,general assembly,1,1
+GBD,global burden of disease,1,1
+GDI,global drug resistant tb initiative,1,1
+GDP,global detention project,1,1
+GF,global fund,1,1
+GH,general hospital,1,1
+GP,glycoprotein,1,1
+GSA,general surgeons australia,1,1
+GU,gonococcal urethritis,1,1
+GUD,genital ulcer disease,1,1
+GWPS,global wps,1,1
+HAZ,height-for-age z-scores,1,1
+HCT,hiv counselling and testing,1,1
+HCW,healthcare workers,1,1
+HLA,human leukocyte antigen,1,1
+HPF,high-powered fields,1,1
+HRQoL,health-related quality of life,1,1
+HVS,high vaginal samples,1,1
+HoM,holland in myanmar while,1,1
+IAEA,international atomic energy agency,1,1
+ICG,international coordinating group,1,1
+ICU,intensive care unit,1,1
+IFOR,implementation force,1,1
+IGRA,inteferon gamma release assay,1,1
+INN,international non-proprietary names,1,1
+INRB,institut national de recherche biomédicale,1,1
+IPD,inpatient departments,1,1
+IRD,interactive research and development,1,1
+IRIS,immune reconstitution inflammatory syndrome,1,1
+IRS,indoor residual spraying,1,1
+ITM,institute of tropical medicine,1,1
+ITN,insecticide treated net,1,1
+IUCD,intrauterine contraception device,1,1
+JPY,japanese yen,1,1
+KII,key informant interviews,1,1
+KP,key populations,1,1
+LBW,low birth weight,1,1
+LFU,loss to follow up,1,1
+LLIN,long-lasting insecticidal net,1,1
+LNA,lymph node aspiration,1,1
+LPA,line probe assays,1,1
+LSHTM,london school of hygiene and tropical medicine,1,1
+LTCR,lost to contact after referral,1,1
+LiPA,line probe assay,1,1
+MAG,military advocate general,1,1
+MAM,moderate acute malnutrition,1,1
+MCL,maximum contaminant level,1,1
+MDA,mass drug administration,1,1
+MHPSS,mental health and psychosocial support,1,1
+MICS,multiple indicator cluster survey,1,1
+MM,maternal mortality,1,1
+MMWR,morbidity and mortality weekly report,1,1
+MPP,migrant protection protocols,1,1
+MRI,magnetic resonance imaging,1,1
+MVC,mass vaccination campaign,1,1
+MVP,meningitis vaccine project,1,1
+MVW,malaria village workers,1,1
+MoU,memorandum of understanding,1,1
+NAP,national action plans,1,1
+NATO,north atlantic treaty organisation,1,1
+NDARC,national drug and alcohol research centre,1,1
+NGS,next-generation sequencing,1,1
+NGU,nongonococcal urethritis,1,1
+NHS,national health service,1,1
+NIH,national institutes of health,1,1
+NIHR,national institute for health research,1,1
+NLR,neutrophil-to-lymphocyte ratio,1,1
+NM,neonatal mortality,1,1
+NMCP,national malaria control programme,1,1
+NOK,norwegian krona,1,1
+NORAD,norwegian agency for development cooperation,1,1
+NRC,nutritional rehabilitation centres,1,1
+NTS,nontyphoidal salmonellae,1,1
+OC,operational centres,1,1
+OCB,operational centre brussels,1,1
+OCP,operational center paris,1,1
+OPLO,operational liaison officer,1,1
+OPV,oral poliomyelitis vaccine,1,1
+OT,operating theaters,1,1
+PB,périmètre brachial,1,1
+PCD,passive case detection,1,1
+PCP,pneumocystis pneumonia,1,1
+PCT,procalcitonin,1,1
+PEN,package of essential noncommunicable,1,1
+PEP,personalized education program,1,1
+PF,pandemic fund,1,1
+PM,particulate matter,1,1
+PMDT,programmatic management of drug resistant tb,1,1
+PNB,p-nitrobenzoic acid,1,1
+PNG,papua new guinea,1,1
+PPH,postpartum haemorrhage,1,1
+PR,press release,1,1
+PRISMA,preferred reporting items for systematic reviews and meta-analyses,1,1
+PZA,pyrazinamide,1,1
+PhRMA,pharmaceutical research and manufacturers of america,1,1
+QA,quality assurance,1,1
+RACD,reactive case detection,1,1
+RAP,rental plans,1,1
+REDCap,research electronic data capture,1,1
+RFI,radio france internationale,1,1
+RIC,retention in care,1,1
+RIO,regional information officer,1,1
+RLS,resource-limited settings,1,1
+RNA,rrna,1,1
+RT,reverse transcriptase,1,1
+RoB,risk of bias,1,1
+SAR,search and rescue,1,1
+SCF,save the children fund,1,1
+SD,supply division,1,1
+SDC,swiss agency for development and cooperation,1,1
+SGBV,sexual and gender-based violence,1,1
+SIDA,swedish international development cooperation agency,1,1
+SII,serum institute of india,1,1
+SLD,second-line drugs,1,1
+SLM,sudan liberation movement,1,1
+SNHL,sensorineural hearing loss,1,1
+SOFA,sequential organ failure assessment,1,1
+SOP,standard operational procedures,1,1
+SSD,source skin distance,1,1
+ST,sequence type,1,1
+STARD,standards for reporting of diagnostic accuracy studies,1,1
+STBP,stop tb partnership,1,1
+STI,sexually transmitted infections,1,1
+TA,traumatismes abdominaux,1,1
+TBA,tb alliance,1,1
+TDF,tenofovir disoproxil fumerate,1,1
+TDM,therapeutic drug monitoring,1,1
+TDR,tests de diagnostic rapides,1,1
+TNF,tumour necrosis factor,1,1
+TP,total protein,1,1
+TSH,thyroid stimulating hormone,1,1
+TV,trichomonas vaginalis,1,1
+TVC,threshold vaccine costs,1,1
+UDUTH,usman danfodiyo university teaching hospital,1,1
+UK,united kingdom,1,1
+UMIC,upper-middle income countries,1,1
+UNSC,united nations security council,1,1
+USD,us dollar,1,1
+VIF,variance inflation factors,1,1
+VIH,virus de la inmunodeficiencia humana,1,1
+VSAT,voluntary screening and treatment,1,1
+VSV,victims of sexual violence,1,1
+VitalSurg,vital surgery training program,1,1
+WALC,west africa lassa fever consortium,1,1
+WB,western blot,1,1
+WCBA,women of childbearing age,1,1
+WIPO,world intellectual property organization,1,1
+WPS,wavelet power spectra,1,1
+YIT,yanomami indigenous territory,1,1
+ZEBOV,zaire ebola virus,1,1

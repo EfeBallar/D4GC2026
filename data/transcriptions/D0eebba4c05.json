@@ -1,0 +1,9 @@
+{
+  "source": "tesseract",
+  "model": "tesseract 5.5.1 (eng)",
+  "pages": 87,
+  "unreadable_count": 326,
+  "original": "D0eebba4c05.pdf",
+  "seconds": 100.2,
+  "created_at": "2026-10-28 14:52:50"
+}

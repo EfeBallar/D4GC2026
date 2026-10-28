@@ -1,0 +1,125 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>MSF Field Library</title>
+<style>
+:root{--bg:#f6f5f3;--card:#fff;--ink:#1d1d1f;--mute:#6b6b70;--line:#e3e1dd;--red:#e2001a;--red-soft:#fde8ea;
+--hi:#fff1a8;--ok:#1f7a3f;--ok-soft:#e3f3e8;--mid:#8a5a00;--mid-soft:#fbf0d9;--low:#6b6b70;--low-soft:#eeeeee}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#141416;--card:#1e1e21;--ink:#ececee;--mute:#a0a0a8;
+--line:#2f2f33;--red:#ff4d5e;--red-soft:#3a1a1e;--hi:#5a4a00;--ok:#6fd394;--ok-soft:#18311f;--mid:#f0c060;--mid-soft:#3a2f12;--low:#a0a0a8;--low-soft:#2a2a2e}}
+:root[data-theme="dark"]{--bg:#141416;--card:#1e1e21;--ink:#ececee;--mute:#a0a0a8;--line:#2f2f33;--red:#ff4d5e;--red-soft:#3a1a1e;
+--hi:#5a4a00;--ok:#6fd394;--ok-soft:#18311f;--mid:#f0c060;--mid-soft:#3a2f12;--low:#a0a0a8;--low-soft:#2a2a2e}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.5 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+header{background:var(--card);border-bottom:1px solid var(--line);padding:12px 16px;display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.logo{width:28px;height:28px;border-radius:6px;background:var(--red);display:grid;place-items:center;color:#fff;font-weight:800}
+h1{font-size:17px;margin:0}.pill{margin-left:auto;font-size:12px;color:var(--mute);border:1px solid var(--line);border-radius:999px;padding:3px 10px}
+.pill b{color:var(--ok)}.pill.off{background:var(--ok-soft);color:var(--ok);border-color:var(--ok);font-weight:600}
+main{max-width:860px;margin:0 auto;padding:16px}
+form{display:flex;gap:8px}input[type=search]{flex:1;min-width:0;font-size:17px;padding:12px 14px;border:1px solid var(--line);border-radius:10px;background:var(--card);color:var(--ink)}
+button{font:inherit;cursor:pointer;border-radius:10px;border:1px solid var(--line);background:var(--card);color:var(--ink);padding:8px 12px}
+button.primary{background:var(--red);border-color:var(--red);color:#fff;font-weight:600;padding:0 18px}
+.filters{display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin:12px 0 4px}
+.chip{padding:4px 11px;border-radius:999px;font-size:13px}.chip.on{background:var(--ink);color:var(--bg);border-color:var(--ink)}
+select{font:inherit;font-size:13px;padding:4px 8px;border-radius:8px;border:1px solid var(--line);background:var(--card);color:var(--ink);max-width:100%}
+label.tog{font-size:13px;color:var(--mute);display:flex;gap:5px;align-items:center;margin-left:auto}
+.meta{font-size:13px;color:var(--mute);margin:12px 2px}.meta .v{color:var(--ink)}
+.card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:14px 16px;margin:10px 0}
+.card h3{font-size:16px;margin:0 0 4px;line-height:1.35}
+.badges{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px}
+.b{font-size:11.5px;padding:2px 8px;border-radius:6px;background:var(--low-soft);color:var(--mute)}
+.b.high{background:var(--ok-soft);color:var(--ok);font-weight:600}.b.medium{background:var(--mid-soft);color:var(--mid);font-weight:600}
+.b.low{background:var(--low-soft);color:var(--low)}
+.b.t1{background:var(--red-soft);color:var(--red);font-weight:700}.b.t2{color:var(--ink);font-weight:600}
+.b.scan{background:var(--mid-soft);color:var(--mid);font-weight:600}.b.scan a{color:inherit}
+.sec{font-size:12.5px;color:var(--mute);margin-bottom:2px}
+.snip{font-size:14.5px}mark{background:var(--hi);color:inherit;border-radius:3px;padding:0 1px}
+.acts{display:flex;gap:8px;margin-top:10px;flex-wrap:wrap}.acts button,.acts a{font-size:13px;padding:5px 10px}
+.acts a{color:var(--ink);text-decoration:none;border:1px solid var(--line);border-radius:10px}
+.empty{background:var(--card);border:1px dashed var(--line);border-radius:12px;padding:18px;text-align:center}
+.empty h3{margin:0 0 6px;color:var(--red)}
+.answer{background:var(--red-soft);border-radius:12px;padding:12px 14px;margin:10px 0;white-space:pre-wrap}
+dialog{width:min(860px,94vw);max-height:86vh;border:1px solid var(--line);border-radius:12px;background:var(--card);color:var(--ink);padding:0}
+dialog .hd{position:sticky;top:0;background:var(--card);border-bottom:1px solid var(--line);padding:10px 14px;display:flex;gap:8px;align-items:center}
+dialog pre{white-space:pre-wrap;font:14px/1.55 system-ui,sans-serif;padding:14px;margin:0}
+.weak{opacity:.75}
+@media (max-width:560px){label.tog{margin-left:0}}
+</style>
+</head>
+<body>
+<header>
+  <div class="logo">+</div><h1>MSF Field Library</h1>
+  <span class="pill" id="status">loading…</span>
+</header>
+<main>
+  <form id="f"><input type="search" id="q" placeholder="e.g. cholera treatment children · paludisme · كوليرا" autofocus autocomplete="off"><button class="primary">Search</button></form>
+  <div class="filters" id="langs"></div>
+  <div class="filters">
+    <select id="genre"><option value="">All document types</option></select>
+    <label class="tog"><input type="checkbox" id="strict" checked> Only confident matches</label>
+  </div>
+  <div id="ans"></div>
+  <div id="out"></div>
+</main>
+<dialog id="dlg"><div class="hd"><b id="dt" style="flex:1"></b><button onclick="dlg.close()">Close</button></div><pre id="dbody"></pre></dialog>
+<script>
+const $=s=>document.querySelector(s);let INFO={},LANG="";
+const LN={en:"English",fr:"Français",es:"Español",ar:"العربية"};
+const esc=s=>String(s??"").replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+function status(){
+  if(!INFO.report)return;
+  const lib=`${INFO.n_docs} docs, ${INFO.index_mb} MB`,v=INFO.library_version?` · v${esc(INFO.library_version)}`:"",p=$("#status");
+  p.classList.toggle("off",!navigator.onLine);
+  p.innerHTML=navigator.onLine?`<b>●</b> Online · local library (${lib})${v}`:`<b>●</b> Offline: searching local library (${lib})${v}`;
+}
+async function refreshInfo(){try{INFO=await (await fetch("/api/info")).json();status()}catch(e){}}
+addEventListener("online",status);addEventListener("offline",status);
+async function init(){
+  try{INFO=await (await fetch("/api/info")).json();}catch(e){$("#status").textContent="server not reachable";return}
+  const r=INFO.report;status();
+  const langs=$("#langs");["",...Object.keys(r.languages)].forEach(l=>{const b=document.createElement("button");b.type="button";
+    b.className="chip"+(l===""?" on":"");b.textContent=l?`${LN[l]||l} (${r.languages[l]})`:"All languages";
+    b.onclick=()=>{LANG=l;langs.querySelectorAll(".chip").forEach(x=>x.classList.remove("on"));b.classList.add("on");run()};langs.appendChild(b)});
+  Object.entries(r.genres).forEach(([g,n])=>{const o=document.createElement("option");o.value=g;o.textContent=`${g} (${n})`;$("#genre").appendChild(o)});
+  const p=new URLSearchParams(location.search).get("q");if(p){$("#q").value=p;run()}
+}
+function card(x,weak){
+  const also=x.also_filed_as?.length?`<span class="b">also filed as ${x.also_filed_as.map(esc).join(", ")}</span>`:"";
+  const pg=/\.pdf$/i.test(x.original_name||"")&&(x.heading||"").match(/^Page (\d+)$/),href=x.original_name?`/original/${encodeURIComponent(x.original_name)}${pg?"#page="+pg[1]:""}`:"";
+  const orig=INFO.originals&&href?`<a href="${href}" target="_blank">Original ${x.original_name.split(".").pop().toUpperCase()}</a>`:"";
+  const scan=x.transcribed?`<span class="b scan">Transcribed from scan / handwriting: ${INFO.originals&&href?`<a href="${href}" target="_blank">check the original</a>`:"check the original"}</span>`:"";
+  return `<div class="card ${weak?"weak":""}"><h3 dir="auto">${esc(x.title)}</h3>
+  <div class="badges"><span class="b ${x.confidence}">${x.confidence==="high"?"Strong match":x.confidence==="medium"?"Partial match":"Weak match"}</span>
+  <span class="b t${x.tier_rank}" title="Evidence tier ${x.tier_rank}">${esc(x.tier)}</span><span class="b">${esc(x.genre)}</span>${x.year?`<span class="b">${x.year}</span>`:""}<span class="b">${LN[x.language]||esc(x.language)}</span><span class="b">${esc(x.doc_id)}</span>${also}${scan}</div>
+  ${x.heading?`<div class="sec" dir="auto">§ ${esc(x.heading)}</div>`:""}<div class="snip" dir="auto">${x.snippet}</div>
+  <div class="acts"><button onclick="openDoc('${esc(x.doc_id)}')">Read full text</button>${orig}</div></div>`;
+}
+async function run(e){
+  e&&e.preventDefault();const q=$("#q").value.trim();if(!q)return;
+  history.replaceState(null,"","?q="+encodeURIComponent(q));
+  const p=new URLSearchParams({q,k:10,strict:$("#strict").checked?1:0});if(LANG)p.set("lang",LANG);if($("#genre").value)p.set("genre",$("#genre").value);
+  const r=await (await fetch("/api/search?"+p)).json();
+  const exp=(r.concepts||[]).map(c=>c.variants.length>1?`<span class="v">${esc(c.label)}</span> (${c.variants.slice(0,4).map(esc).join(", ")})`:`<span class="v">${esc(c.label)}</span>`).join(" · ");
+  let h=`<div class="meta">${r.results.length} document${r.results.length===1?"":"s"} · ${r.ms} ms · searched: ${exp}</div>`;
+  if(r.abstained){
+    h+=`<div class="empty"><h3>No reliable match in the library</h3><div>${r.unknown_terms?.length?`Not found anywhere: <b>${r.unknown_terms.map(esc).join(", ")}</b>. `:""}Try other words, or a synonym.</div>
+    ${r.weaker_matches?.length?`<button style="margin-top:10px" onclick="this.parentNode.nextElementSibling.hidden=false;this.remove()">Show ${r.weaker_matches.length} weak match(es) anyway</button>`:""}</div>
+    <div hidden>${(r.weaker_matches||[]).map(x=>card(x,true)).join("")}</div>`;
+  } else {
+    h+=r.results.map(x=>card(x)).join("");
+    if(r.weaker_matches?.length)h+=`<details><summary class="meta">${r.weaker_matches.length} weaker match(es) hidden</summary>${r.weaker_matches.map(x=>card(x,true)).join("")}</details>`;
+  }
+  $("#out").innerHTML=h;refreshInfo();
+  $("#ans").innerHTML=INFO.llm&&!r.abstained?`<button onclick="ask()">Summarise answer with local AI</button>`:"";
+}
+async function ask(){
+  $("#ans").innerHTML=`<div class="answer">Thinking on this device…</div>`;
+  const r=await (await fetch("/api/answer?q="+encodeURIComponent($("#q").value))).json();
+  $("#ans").innerHTML=`<div class="answer" dir="auto">${r.ok?esc(r.answer)+(r.sources?.length?"\n\nSources: "+r.sources.map((s,i)=>`[${i+1}] ${s}`).join("  "):""):esc(r.error)}</div>`;
+}
+async function openDoc(id){const d=await (await fetch("/api/doc/"+id)).json();$("#dt").textContent=d.title+" ("+id+")";$("#dbody").textContent=d.text;$("#dbody").dir="auto";$("#dlg").showModal()}
+$("#f").onsubmit=run;$("#genre").onchange=run;$("#strict").onchange=run;init();
+</script>
+</body>
+</html>

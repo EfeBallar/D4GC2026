@@ -1,0 +1,50 @@
+concept,en,fr,es,ar
+tuberculosis,tuberculosis|tb,tuberculose,tuberculosis,السل
+malaria,malaria,paludisme|malaria,malaria|paludismo,الملاريا
+cholera,cholera,choléra,cólera,الكوليرا
+measles,measles,rougeole,sarampión,الحصبة
+malnutrition,malnutrition|undernutrition|malnourished,malnutrition|dénutrition|malnutris,desnutrición|malnutrición|desnutridos,سوء التغذية
+hiv,hiv|aids,vih|sida,vih|sida,فيروس نقص المناعة|الإيدز
+vaccination,vaccination|vaccine|vaccines|immunization|immunisation,vaccination|vaccin|vaccins,vacunación|vacuna|vacunas,التطعيم|اللقاح|التلقيح
+snakebite,snakebite|snake bite|snakebites|envenoming,morsure de serpent|envenimation,mordedura de serpiente|envenenamiento,لدغة الأفعى|لدغات الثعابين
+burns,burn|burns,brûlure|brûlures,quemadura|quemaduras,الحروق
+diarrhoea,diarrhoea|diarrhea,diarrhée,diarrea,الإسهال
+dehydration,dehydration,déshydratation,deshidratación,الجفاف
+fever,fever,fièvre,fiebre,الحمى
+pneumonia,pneumonia,pneumonie,neumonía,الالتهاب الرئوي
+meningitis,meningitis,méningite,meningitis,التهاب السحايا
+ebola,ebola,ebola,ébola,إيبولا
+anaemia,anaemia|anemia,anémie,anemia,فقر الدم
+pregnancy,pregnancy|pregnant,grossesse|enceinte,embarazo|embarazada,الحمل|الحوامل
+childbirth,childbirth|delivery|births|obstetric,accouchement|obstétrique,parto|obstétrico,الولادة
+caesarean,caesarean|cesarean|c-section,césarienne,cesárea,القيصرية
+sexual violence,sexual violence|rape,violence sexuelle|viol,violencia sexual|violación,العنف الجنسي
+mental health,mental health|psychological|psychosocial,santé mentale|psychologique,salud mental|psicológico,الصحة النفسية
+surgery,surgery|surgical,chirurgie|chirurgical,cirugía|quirúrgico,الجراحة|جراحية
+wound,wound|wounds,plaie|plaies|blessure|blessures,herida|heridas,جرح|الجرحى
+hepatitis,hepatitis,hépatite,hepatitis,التهاب الكبد
+refugees,refugee|refugees,réfugié|réfugiés,refugiado|refugiados,اللاجئين
+displaced,displaced|displacement,déplacés|déplacement,desplazados|desplazamiento,النازحين|النزوح
+epidemic,epidemic|outbreak,épidémie|flambée,epidemia|brote,وباء|تفشي
+dengue,dengue,dengue,dengue,حمى الضنك
+leishmaniasis,leishmaniasis|kala azar,leishmaniose,leishmaniasis,الليشمانيات
+antibiotic,antibiotic|antibiotics,antibiotique|antibiotiques,antibiótico|antibióticos,المضادات الحيوية
+sanitation,water and sanitation|sanitation|hygiene,eau et assainissement|assainissement|hygiène,agua y saneamiento|saneamiento|higiene,المياه والصرف الصحي|النظافة
+hospital,hospital|hospitals,hôpital|hôpitaux,hospital|hospitales,مستشفى|المستشفيات
+children,child|children|paediatric|pediatric,enfant|enfants|pédiatrique,niño|niños|pediátrico,الأطفال|طفل
+attacks on health care,attack on hospital|attacks on health care|attacks on medical,attaque contre l'hôpital|attaques contre les soins,ataque al hospital|ataques contra la atención,الهجمات على|استهداف المستشفيات
+syria,syria,syrie,siria,سوريا
+yemen,yemen,yémen,yemen,اليمن
+sudan,sudan,soudan,sudán,السودان
+gaza,gaza|palestine,gaza|palestine,gaza|palestina,غزة|فلسطين
+lebanon,lebanon,liban,líbano,لبنان
+afghanistan,afghanistan,afghanistan,afganistán,أفغانستان
+drc,democratic republic of congo|drc,république démocratique du congo|rdc,república democrática del congo|rdc,الكونغو
+haiti,haiti,haïti,haití,هايتي
+ukraine,ukraine,ukraine,ucrania,أوكرانيا
+nigeria,nigeria,nigéria,nigeria,نيجيريا
+postpartum haemorrhage,postpartum haemorrhage|post-partum haemorrhage|postpartum hemorrhage|post-partum hemorrhage|pph,hémorragie du post-partum|hémorragie post-partum|hémorragie de la délivrance,hemorragia posparto|hemorragia postparto,نزيف ما بعد الولادة
+haemorrhage,haemorrhage|hemorrhage|bleeding,hémorragie|saignement,hemorragia|sangrado,نزيف
+eclampsia,eclampsia|pre-eclampsia,éclampsie|pré-éclampsie,eclampsia|preeclampsia,تسمم الحمل
+sepsis,sepsis|septic,sepsis|septicémie,sepsis|septicemia,الإنتان|تعفن الدم
+newborn,newborn|neonatal|neonate,nouveau-né|néonatal,recién nacido|neonatal,حديثي الولادة|الوليد
