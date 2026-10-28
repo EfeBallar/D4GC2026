@@ -12,7 +12,10 @@ So typographic punctuation is folded to ASCII first (a curly apostrophe would ot
 characters of answer), and Arabic replies, which cannot avoid UCS-2, are trimmed to 70.
 """
 import html
+import json
 import re
+import urllib.error
+import urllib.request
 
 GSM7 = set(
     "@£$¥èéùìòÇ\nØø\rÅåΔ_ΦΓΛΩΠΨΣΘΞÆæßÉ"
@@ -90,7 +93,57 @@ def _one_message(body: str, tail: str) -> str:
     return text
 
 
-def reply(searcher, query: str) -> dict:
+OVERVIEW_SYSTEM = (
+    "You write a one-line description of a document for a text message to a health worker. "
+    "Use ONLY the passage you are given. Never add a fact, dose, number or drug that is not in it. "
+    "Reply in the SAME LANGUAGE as the QUESTION, even when the passage is in another language. "
+    "One short sentence, no preamble, no quotation marks."
+)
+
+
+def overview(query: str, title: str, genre: str, passage: str, limit: int, timeout: float = 20.0) -> dict:
+    """One-line description of the document, in the question's language.
+
+    Deliberately the same model and the same configuration as the chat (chat.config(): env
+    CHAT_BASE_URL / CHAT_API_KEY / CHAT_MODEL), so a site that can run one can run the other and
+    there is no second thing to install. The call is plain OpenAI-format, non-streaming.
+
+    It is machine-made text, so it travels labelled and it is never merged into the passage: the
+    quoted protocol text stays exactly as the document wrote it.
+    """
+    from ..chat import config
+    cfg = config()
+    budget = max(40, limit - 10)
+    body = json.dumps({
+        "model": cfg["model"],
+        "messages": [
+            {"role": "system", "content": OVERVIEW_SYSTEM},
+            {"role": "user", "content": f"QUESTION: {query}\n\nDOCUMENT: {title} ({genre})\n\n"
+                                        f"PASSAGE: {passage[:1200]}\n\n"
+                                        f"Describe the document in at most {budget} characters."},
+        ],
+        "stream": False, "temperature": 0.1, "max_tokens": 120,
+    }).encode("utf-8")
+    headers = {"Content-Type": "application/json"}
+    if cfg["key"]:
+        headers["Authorization"] = f"Bearer {cfg['key']}"
+    req = urllib.request.Request(cfg["base"] + "/chat/completions", data=body, headers=headers)
+    try:
+        with urllib.request.urlopen(req, timeout=timeout) as r:
+            data = json.loads(r.read().decode("utf-8"))
+        text = _plain(data["choices"][0]["message"]["content"])
+    except (urllib.error.URLError, OSError, KeyError, ValueError, TimeoutError) as e:
+        return {"ok": False, "reason": f"no model reachable ({type(e).__name__})",
+                "model": cfg["model"], "base": cfg["base"]}
+    if not text:
+        return {"ok": False, "reason": "empty answer", "model": cfg["model"], "base": cfg["base"]}
+    tail = " (AI)"                       # machine-made text never travels unlabelled
+    # Size against the ANSWER, not the question: "hemorragia posparto" is plain ASCII, but a reply
+    # containing "guia" with an accent is UCS-2, where the limit is 70 and not 160.
+    return {"ok": True, "text": _one_message(text, tail), "model": cfg["model"]}
+
+
+def reply(searcher, query: str, with_overview: bool = True) -> dict:
     """The exact text the modem would send back, plus what it costs to send."""
     q = (query or "").strip()
     if not q:
@@ -122,7 +175,15 @@ def reply(searcher, query: str) -> dict:
     lang = (meta.get("language") or "").upper()
     tail = f" [{top['doc_id']}{' ' + lang if lang else ''} {top['confidence'][0].upper()}]"
     text = _one_message(body, tail)
-    return {"ok": True, "query": q, "sms": text, "cost": segments(text),
+
+    ov = None
+    if with_overview:
+        _, ov_limit = encoding_of(q)     # the reply is written in the question's language
+        ov = overview(q, meta.get("title") or top["doc_id"], meta.get("genre") or "", body, ov_limit)
+        if ov.get("ok"):
+            ov["cost"] = segments(ov["text"])
+
+    return {"ok": True, "query": q, "sms": text, "cost": segments(text), "overview": ov,
             "doc_id": top["doc_id"], "title": meta.get("title"), "tier": meta.get("tier"),
             "language": meta.get("language"), "confidence": top["confidence"],
             "ms": r.get("ms", 0.0)}

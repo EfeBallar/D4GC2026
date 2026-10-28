@@ -29,6 +29,8 @@
   .b.out{background:#13261a;border-left:2px solid #2e6b3f;color:#bdf0c8}
   .b.in{background:#102a33;border-left:2px solid #2e6b8c;color:#b6e3f4}
   .b.err{background:#2b1d13;border-left:2px solid var(--warn);color:#f8c89b}
+  .b.ai{background:#1b1430;border-left:2px solid #8957e5;color:#d6c7f5}
+  .b.none{background:#14181f;border-left:2px solid #3a4452;color:#7d8694;font-size:11px}
   .b small{display:block;color:#5d8f6c;font-size:9.5px;margin-top:3px}
   .keys{margin-top:12px;display:grid;gap:7px}
   .keys input{width:100%;background:#0d1117;border:1px solid var(--line);color:var(--ink);
@@ -61,8 +63,9 @@
 <div class="wrap">
   <header>
     <h1>Works on a €10 phone</h1>
-    <p>A health worker with a basic handset texts the site server. Same index, same ranking, no
-       internet and no LLM — the answer comes back as one SMS.</p>
+    <p>A health worker with a basic handset texts the site server. The answer is a passage from
+       the document, never generated. A second message describes the document in the language of
+       the question, written by the same on-device model as the chat and labelled (AI).</p>
   </header>
 
   <div class="cols">
@@ -153,6 +156,15 @@ async function send(){
     const c = r.cost || {};
     bubble(r.ok ? "in" : "err", r.sms,
            `${c.chars}/${c.per_segment} chars · ${c.encoding} · ${c.segments} SMS`);
+    const ov = r.overview;
+    if (ov && ov.ok){
+      const oc = ov.cost || {};
+      bubble("ai", ov.text,
+             `about this document, in your language · ${oc.chars}/${oc.per_segment} · ${oc.encoding} · ${oc.segments} SMS`);
+    } else if (ov && r.ok){
+      bubble("none", "No document overview: " + (ov.reason || "unavailable"),
+             "the answer above is unaffected");
+    }
     set("m-chars", `${c.chars} / ${c.per_segment}`);
     set("m-enc", c.encoding);
     set("m-seg", c.segments);
