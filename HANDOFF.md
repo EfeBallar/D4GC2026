@@ -227,3 +227,88 @@ python scripts/demo_queries.py ["query" ...]   ·   python scripts/evaluate.py
 - PDF title extraction is heuristic. Enrichment summaries improve it.
 - Arabic gets light normalisation only, no full stemming.
 - French and Spanish guideline chapters are probably translations of the English ones. They aren't grouped yet.
+
+---
+
+## 5. Extra field features (added 16:00–17:10, isolated for easy merging)
+
+**Run with `python3.12`, not `python3`.** System python on the demo laptop is 3.9.6 and cannot
+import `digitise.py` (`dict | None` needs 3.10+). The server dies at import with `python3`.
+
+```bash
+python3.12 scripts/build_index.py --data "../D4GC data" --csv data/documentation.csv
+python3.12 scripts/build_galaxy.py          # 10 s  -> data/galaxy.json (127 KB)
+python3.12 scripts/make_radar_sim.py        #       -> data/radar_sim.json (SIMULATED fixture)
+python3.12 -m msf_search.server --originals "../D4GC data/Original"
+```
+
+### Why it will not conflict with your work
+Everything lives in **`msf_search/extras/`** and its own static pages. The *only* edit to an
+existing file is three lines in `server.py` (one import, two lines before the 404):
+
+```python
+if (r := extras.handle(u.path, qs, searcher)) is not None:
+    return self._send(*r)
+```
+
+`search.py`, `index.py`, `ingest.py`, `index.html` and `features.js` are untouched. Extras call
+the ordinary `Searcher` API, so ranking improvements flow through automatically.
+
+| Route | What it is |
+|---|---|
+| `/sms`, `/api/sms?q=` | 160-character answer for a basic handset. Real GSM-7 / UCS-2 segment arithmetic: Latin fits 160, Arabic 70. |
+| `/galaxy`, `/api/galaxy` | All 561 documents as a map. Coordinates precomputed at HQ; the device reads a 127 KB file. |
+| `/radar`, `/api/radar` | Cross-site signal detection over unanswered searches. Multi-site feed is **simulated and labelled**; the device's own log is real and kept separate. |
+| `/api/checkpoint[?action=clear]` | Clears the local search history. |
+
+### Honest limits to state in Q&A
+- The radar's multi-site feed is invented demo data (`data/radar_sim.json`, seeded, every record
+  carries `simulated: true`). Say so before a judge asks. The Google Flu Trends caveat is printed
+  on the page itself.
+- Checkpoint mode clears the local log. It is not anti-forensics; full-disk encryption is what
+  protects a seized laptop.
+- The galaxy's clusters come out **language-aligned, not topic-aligned** — Arabic, French and
+  Spanish each form their own cluster. That is a real property of this collection and worth
+  saying out loud: the library separates by language before subject, which is exactly why
+  cross-lingual retrieval matters.
+- Galaxy vocabulary is selected **per language**. A single corpus-wide frequency cut gave all 51
+  Arabic documents identical coordinates, because an 80%-English corpus keeps almost no Arabic
+  term. Fixed, but it is the kind of bias worth mentioning as a data-quality finding.
+- `data/enrichment.jsonl` still covers only **13 of 561 documents**, so `IMPORTANCE_PRIOR` is
+  inactive for the rest and summaries are mostly blank. Unchanged by this work.
+
+Core regression after these changes (`scripts/evaluate.py`): recall@1 0.957, recall@5 0.997,
+MRR 0.974, 18/20 off-topic abstained, median 9.1 ms, index 33.2 MB — unchanged.
+
+### Evidence trail (`/trail`, `/api/trail`)
+
+`scripts/build_trail.py` links guideline chapters to the MSF research on the same clinical
+question, using shared **rare** vocabulary (document frequency 2–60 of 561), cosine over
+IDF-weighted profiles. Run it after `build_index.py`; takes ~9 s, writes `data/trail.json` (37 KB).
+
+It is deliberately conservative, and the thresholds are at the top of the script:
+- at least 3 shared specialist terms, and no single term may carry >60% of the score;
+- front-matter vocabulary excluded (author names, licence boilerplate, "supplementary", "guest");
+- link targets whose title is unusable are skipped — **13 of 561 documents have front matter or a
+  URL fragment as their title**, which is a data-quality finding worth a line on the slide,
+  alongside the 18 failed scrapes and 3 duplicates;
+- top 3 links only. Ranks 4–5 were consistently noise.
+
+Result: **43 of 73 guideline chapters get a link, 30 get nothing.** Showing nothing rather than a
+weak suggestion is the same principle as abstaining on a search — say that out loud, it is the
+consistent design choice across the whole system.
+
+Every link displays the terms that produced it, so a clinician judges the link instead of
+trusting a score.
+
+**Three links verified by hand against the source text:**
+
+| Guideline | Research | Why it holds |
+|---|---|---|
+| `D035530810c` Host, parasite and drug determinants (VL) | `D8048b8fc82` *A randomized trial of AmBisome* | Protocol: "relapse following treatment with 20 mg/kg liposomal amphotericin B (Ambisome) in Bihar, India". Trial: "AmBisome monotherapy at 40 mg/kg is recommended by WHO." Same question — AmBisome dosing. |
+| `D744cf5e8a7` Xpert assays appendix | `De789e08ccc` Low resistance to first/second line anti-TB drugs | Study tested resistance "using the MTBDRplus and Xpert MTB/RIF assays". |
+| `D6a4632d088` Vaccination coverage survey, Bangladesh 2017 | `D5710a4f4c5` Coverage surveys, Bokoro District, Chad 2016 | Both coverage-survey protocols; shared `interviewers, questionnaires, households, recall`. |
+
+**State the limit before a judge finds it:** this is lexical co-occurrence, *not* a citation graph.
+The documents do not cite each other in machine-readable form. The honest claim is "these concern
+the same clinical question", never "this study caused this recommendation".

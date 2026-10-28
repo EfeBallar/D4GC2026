@@ -1,0 +1,176 @@
+<!doctype html>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>SMS field line</title>
+<style>
+  :root{
+    --bg:#0e1116; --panel:#161b22; --line:#2a313b; --ink:#e6edf3; --dim:#8b949e;
+    --screen:#0b1f14; --screen-ink:#7ee787; --out:#1f2630; --accent:#58a6ff; --warn:#f0883e;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;padding:24px 16px;background:var(--bg);color:var(--ink);
+    font:15px/1.5 -apple-system,BlinkMacSystemFont,"Segoe UI",system-ui,sans-serif}
+  .wrap{max-width:760px;margin:0 auto;display:grid;gap:22px}
+  header h1{margin:0 0 4px;font-size:21px;letter-spacing:-.01em}
+  header p{margin:0;color:var(--dim);font-size:14px}
+  .cols{display:grid;grid-template-columns:286px 1fr;gap:24px;align-items:start}
+  @media (max-width:680px){.cols{grid-template-columns:1fr}}
+
+  /* feature-phone mock */
+  .phone{background:#1b2027;border:1px solid var(--line);border-radius:26px;padding:14px 12px 18px;
+    box-shadow:0 12px 32px rgba(0,0,0,.45)}
+  .brand{text-align:center;color:var(--dim);font-size:10px;letter-spacing:.14em;margin-bottom:8px}
+  .screen{background:var(--screen);border:1px solid #17351f;border-radius:6px;padding:10px;
+    height:300px;overflow-y:auto;font:12px/1.45 ui-monospace,SFMono-Regular,Menlo,monospace;
+    color:var(--screen-ink);display:flex;flex-direction:column;gap:8px}
+  .sig{display:flex;justify-content:space-between;color:#4d8c5f;font-size:10px;
+    border-bottom:1px solid #17351f;padding-bottom:5px;margin-bottom:2px}
+  .b{padding:5px 7px;border-radius:4px;white-space:pre-wrap;word-break:break-word}
+  .b.out{background:#13261a;border-left:2px solid #2e6b3f;color:#bdf0c8}
+  .b.in{background:#102a33;border-left:2px solid #2e6b8c;color:#b6e3f4}
+  .b.err{background:#2b1d13;border-left:2px solid var(--warn);color:#f8c89b}
+  .b small{display:block;color:#5d8f6c;font-size:9.5px;margin-top:3px}
+  .keys{margin-top:12px;display:grid;gap:7px}
+  .keys input{width:100%;background:#0d1117;border:1px solid var(--line);color:var(--ink);
+    border-radius:6px;padding:9px 10px;font:13px ui-monospace,Menlo,monospace}
+  .keys button{width:100%;background:#21304a;color:#cfe3ff;border:1px solid #30507d;
+    border-radius:6px;padding:9px;font-size:13px;font-weight:600;cursor:pointer}
+  .keys button:hover{background:#294069}
+  .keys button:disabled{opacity:.5;cursor:default}
+
+  .meters{display:grid;gap:14px}
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:14px 16px}
+  .card h2{margin:0 0 10px;font-size:12px;text-transform:uppercase;letter-spacing:.08em;color:var(--dim)}
+  .bar{height:7px;background:#0d1117;border-radius:4px;overflow:hidden;margin:8px 0 6px}
+  .bar i{display:block;height:100%;background:var(--accent);width:0;transition:width .25s}
+  .bar i.full{background:var(--warn)}
+  dl{margin:0;display:grid;grid-template-columns:auto 1fr;gap:5px 14px;font-size:13px}
+  dt{color:var(--dim)}
+  dd{margin:0;text-align:right;font-variant-numeric:tabular-nums}
+  .pill{display:inline-block;padding:1px 7px;border-radius:999px;font-size:11px;
+    border:1px solid var(--line);background:#0d1117;color:var(--dim)}
+  .samples{display:flex;flex-wrap:wrap;gap:6px}
+  .samples button{background:#0d1117;border:1px solid var(--line);color:var(--ink);
+    border-radius:999px;padding:4px 11px;font-size:12px;cursor:pointer}
+  .samples button:hover{border-color:var(--accent);color:var(--accent)}
+  footer{color:var(--dim);font-size:12.5px;border-top:1px solid var(--line);padding-top:14px}
+  code{background:#0d1117;padding:1px 5px;border-radius:4px;font-size:12px}
+  a{color:var(--accent)}
+</style>
+<div class="wrap">
+  <header>
+    <h1>Works on a €10 phone</h1>
+    <p>A health worker with a basic handset texts the site server. Same index, same ranking, no
+       internet and no LLM — the answer comes back as one SMS.</p>
+  </header>
+
+  <div class="cols">
+    <div class="phone">
+      <div class="brand">SITE SERVER · GSM</div>
+      <div class="screen" id="screen">
+        <div class="sig"><span>▮▮▮▯ no internet</span><span id="clock"></span></div>
+      </div>
+      <div class="keys">
+        <input id="q" placeholder="type a question" autocomplete="off">
+        <button id="send">Send text message</button>
+      </div>
+    </div>
+
+    <div class="meters">
+      <div class="card">
+        <h2>What this message costs to send</h2>
+        <div class="bar"><i id="bar"></i></div>
+        <dl>
+          <dt>Characters</dt><dd id="m-chars">—</dd>
+          <dt>Encoding</dt><dd id="m-enc">—</dd>
+          <dt>Messages</dt><dd id="m-seg">—</dd>
+          <dt>Search time</dt><dd id="m-ms">—</dd>
+        </dl>
+        <p style="margin:10px 0 0;color:var(--dim);font-size:12px">
+          Latin text sends as GSM-7, 160 characters per message. Arabic forces UCS-2, so the
+          limit drops to 70 and replies are trimmed to stay a single message.</p>
+      </div>
+
+      <div class="card">
+        <h2>Source of the answer</h2>
+        <dl>
+          <dt>Document</dt><dd id="m-doc">—</dd>
+          <dt>Evidence tier</dt><dd id="m-tier">—</dd>
+          <dt>Language</dt><dd id="m-lang">—</dd>
+          <dt>Confidence</dt><dd id="m-conf">—</dd>
+        </dl>
+      </div>
+
+      <div class="card">
+        <h2>Try these</h2>
+        <div class="samples" id="samples"></div>
+      </div>
+    </div>
+  </div>
+
+  <footer>
+    The document id travels with every reply (<code>[P23 EN H]</code> = document, language,
+    confidence) so the worker can check it against the printed guideline — and can see when the
+    answer came from another language, because this library holds no Arabic clinical guidance. Off-topic questions get
+    “not in the library” rather than a wrong dose. <a href="/">Back to the library</a>
+  </footer>
+</div>
+<script>
+const SAMPLES = ["pph treatment", "cholera treatment centre", "severe acute malnutrition child",
+                 "hémorragie du post-partum", "كوليرا", "bitcoin price"];
+const $ = id => document.getElementById(id);
+const screenEl = $("screen"), qEl = $("q"), sendEl = $("send");
+
+$("clock").textContent = new Date().toTimeString().slice(0,5);
+SAMPLES.forEach(s => {
+  const b = document.createElement("button");
+  b.textContent = s;
+  b.onclick = () => { qEl.value = s; send(); };
+  $("samples").appendChild(b);
+});
+
+function bubble(cls, text, note){
+  const d = document.createElement("div");
+  d.className = "b " + cls;
+  d.textContent = text;
+  if (note){ const s = document.createElement("small"); s.textContent = note; d.appendChild(s); }
+  screenEl.appendChild(d);
+  screenEl.scrollTop = screenEl.scrollHeight;
+  return d;
+}
+function set(id, v){ $(id).textContent = v ?? "—"; }
+
+async function send(){
+  const q = qEl.value.trim();
+  if (!q) return;
+  sendEl.disabled = true;
+  bubble("out", q, "sent to site server");
+  const pending = bubble("in", "…");
+  try {
+    const r = await fetch("/api/sms?q=" + encodeURIComponent(q)).then(x => x.json());
+    pending.remove();
+    const c = r.cost || {};
+    bubble(r.ok ? "in" : "err", r.sms,
+           `${c.chars}/${c.per_segment} chars · ${c.encoding} · ${c.segments} SMS`);
+    set("m-chars", `${c.chars} / ${c.per_segment}`);
+    set("m-enc", c.encoding);
+    set("m-seg", c.segments);
+    set("m-ms", r.ms != null ? r.ms + " ms" : "—");
+    set("m-doc", r.doc_id || "no match");
+    set("m-tier", r.tier); set("m-lang", r.language); set("m-conf", r.confidence);
+    const pct = Math.min(100, Math.round(100 * (c.chars || 0) / (c.per_segment || 160)));
+    const bar = $("bar");
+    bar.style.width = pct + "%";
+    bar.className = pct > 90 ? "full" : "";
+  } catch (e) {
+    pending.remove();
+    bubble("err", "No reply from the site server.");
+  }
+  sendEl.disabled = false;
+  qEl.value = "";
+  qEl.focus();
+}
+sendEl.onclick = send;
+qEl.addEventListener("keydown", e => { if (e.key === "Enter") send(); });
+qEl.focus();
+</script>

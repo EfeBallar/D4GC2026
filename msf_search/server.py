@@ -14,7 +14,7 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 
 from .search import Searcher
-from . import chat, gaps, llm
+from . import chat, extras, gaps, llm
 
 STATIC = Path(__file__).parent / "static"
 
@@ -137,6 +137,8 @@ def make_handler(searcher: Searcher, originals: list[Path], llm_model: str | Non
                 for p in (folder / name for folder in originals):
                     if p.exists():
                         return self._send(200, p.read_bytes(), mimetypes.guess_type(p.name)[0] or "application/octet-stream")
+            if (r := extras.handle(u.path, qs, searcher)) is not None:
+                return self._send(*r)
             self._json({"error": "not found"}, 404)
 
     return H
