@@ -7,12 +7,14 @@ Then open http://<laptop-ip>:8000 from any phone or PC on the same Wi-Fi. No int
 import argparse
 import json
 import mimetypes
+import threading
+import time
 import urllib.parse
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 
 from .search import Searcher
-from . import gaps, llm
+from . import chat, gaps, llm
 
 STATIC = Path(__file__).parent / "static"
 
@@ -32,6 +34,51 @@ def make_handler(searcher: Searcher, originals: list[Path], llm_model: str | Non
 
         def _json(self, obj, code=200):
             self._send(code, json.dumps(obj, ensure_ascii=False).encode("utf-8"))
+
+        def _sse(self, event: str, data: dict):
+            self.wfile.write(f"event: {event}\ndata: {json.dumps(data, ensure_ascii=False)}\n\n".encode("utf-8"))
+            self.wfile.flush()
+
+        def do_POST(self):
+            if urllib.parse.urlparse(self.path).path != "/api/chat":
+                return self._json({"error": "not found"}, 404)
+            try:
+                req = json.loads(self.rfile.read(int(self.headers.get("Content-Length") or 0)) or b"{}")
+            except ValueError:
+                return self._json({"error": "invalid JSON"}, 400)
+            question = str(req.get("question") or "").strip()
+            if not question:
+                return self._json({"error": "question is required"}, 400)
+            t0 = time.perf_counter()
+            self.send_response(200)
+            self.send_header("Content-Type", "text/event-stream; charset=utf-8")
+            self.send_header("Cache-Control", "no-store")
+            self.end_headers()
+            cfg = chat.config()
+            ctx = chat.build_context(searcher, question)
+            if ctx["abstained"]:  # never call the LLM when the library has no reliable match
+                if gap_log:
+                    gaps.log_unanswered(gap_log, ctx["search"], searcher.library_version, {"via": ["chat"]})
+                self._sse("meta", {"sources": [], "model": None, "llm_called": False})
+                self._sse("token", {"text": chat.REFUSAL + (f" Not found anywhere: {', '.join(ctx['unknown_terms'])}."
+                                                           if ctx["unknown_terms"] else "")})
+                return self._sse("done", {"llm_called": False, "ttft_ms": None,
+                                          "total_ms": round((time.perf_counter() - t0) * 1000), "model": None})
+            self._sse("meta", {"sources": ctx["sources"], "model": cfg["model"], "llm_called": True,
+                               "retrieval_ms": round((time.perf_counter() - t0) * 1000)})
+            ttft, n, answer = None, 0, ""
+            try:
+                for tok in chat.stream_answer(question, ctx["context"], req.get("history"), cfg):
+                    if ttft is None:
+                        ttft = round((time.perf_counter() - t0) * 1000)
+                    n += 1
+                    answer += tok
+                    self._sse("token", {"text": tok})
+            except OSError as e:
+                self._sse("error", {"error": f"local model not reachable ({e}); search still works"})
+            self._sse("done", {"llm_called": True, "ttft_ms": ttft, "tokens": n, "model": cfg["model"],
+                               "unsupported_terms": chat.unsupported_terms(answer, ctx["context"], question),
+                               "total_ms": round((time.perf_counter() - t0) * 1000)})
 
         def do_GET(self):
             u = urllib.parse.urlparse(self.path)
@@ -105,6 +152,7 @@ def main():
     ap.add_argument("--qvec-model", default="models/potion-multilingual-128M",
                     help="HyDE question vectors (needs model2vec + build/qvec.npy); off if missing")
     ap.add_argument("--qvec-threshold", type=float, default=0.55)
+    ap.add_argument("--no-chat-warm", action="store_true", help="don't preload the on-device chat model")
     ap.add_argument("--gap-log", default="logs/unanswered.jsonl", help='searches with no reliable match; "" to disable')
     ap.add_argument("--host", default="0.0.0.0")
     ap.add_argument("--port", type=int, default=8000)
@@ -126,6 +174,8 @@ def main():
     s = Searcher(a.index, a.glossary, dense=dense, abbreviations_path=a.abbrev, qvec=qvec,
                  profiles_path=a.profiles)
     print("question vectors:", f"on ({len(qvec.chunk_ids)} vectors)" if qvec else "off", flush=True)
+    if not a.no_chat_warm:  # load the chat model in the background so the first answer is fast
+        threading.Thread(target=lambda: print("chat model:", chat.warm(), flush=True), daemon=True).start()
     orig = [Path(f) for f in (a.originals, a.inbox) if f and Path(f).is_dir()]
     print(f"MSF library: {s.n_docs} documents. Open http://localhost:{a.port}")
     ThreadingHTTPServer((a.host, a.port), make_handler(s, orig, a.llm_model, a.gap_log or None)).serve_forever()
