@@ -1,0 +1,117 @@
+<!doctype html>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Evidence trail</title>
+<style>
+  :root{--bg:#0a0d12;--panel:#141a23;--line:#2a3340;--ink:#e6edf3;--dim:#8b949e;
+        --accent:#58a6ff;--ok:#7ee787;--warn:#f0883e}
+  *{box-sizing:border-box}
+  body{margin:0;padding:20px 16px;background:var(--bg);color:var(--ink);
+    font:15px/1.5 -apple-system,BlinkMacSystemFont,"Segoe UI",system-ui,sans-serif}
+  .wrap{max-width:1080px;margin:0 auto;display:grid;gap:15px}
+  h1{margin:0;font-size:21px;letter-spacing:-.01em}
+  .sub{margin:3px 0 0;color:var(--dim);font-size:13.5px;max-width:70ch}
+  .stats{display:flex;flex-wrap:wrap;gap:8px}
+  .pill{background:#0d1117;border:1px solid var(--line);border-radius:999px;
+    padding:4px 11px;font-size:12.5px;color:var(--dim)}
+  .pill b{color:var(--ink)}
+  .cols{display:grid;grid-template-columns:330px 1fr;gap:15px;align-items:start}
+  @media (max-width:820px){.cols{grid-template-columns:1fr}}
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:11px;padding:13px 15px}
+  .card h2{margin:0 0 9px;font-size:11.5px;text-transform:uppercase;letter-spacing:.08em;color:var(--dim)}
+  input[type=search]{width:100%;background:#0d1117;border:1px solid var(--line);color:var(--ink);
+    border-radius:7px;padding:8px 10px;font-size:13.5px;margin-bottom:9px}
+  .list{max-height:60vh;overflow-y:auto;display:grid;gap:5px}
+  .g{background:#0d1117;border:1px solid transparent;border-radius:7px;padding:8px 10px;
+    cursor:pointer;font-size:13px;line-height:1.35}
+  .g:hover{border-color:var(--line)}
+  .g[aria-selected=true]{border-color:var(--accent);background:#141d2b}
+  .g small{display:block;color:var(--dim);font-size:11.5px;margin-top:2px}
+  .lk{border-left:3px solid var(--ok);background:#0f1a14;border-radius:0 8px 8px 0;
+    padding:11px 13px;margin-bottom:10px}
+  .lk h3{margin:0 0 3px;font-size:14.5px;font-weight:600}
+  .lk .meta{color:var(--dim);font-size:12.5px}
+  .terms{display:flex;flex-wrap:wrap;gap:5px;margin-top:8px}
+  .terms span{background:#0d1117;border:1px solid #2f4d3a;color:#9fdcb0;
+    border-radius:999px;padding:2px 9px;font-size:11.5px}
+  .empty{color:var(--dim);font-size:13.5px}
+  .caveat{color:var(--dim);font-size:12.5px;border-top:1px solid var(--line);padding-top:12px}
+  a{color:var(--accent)}
+</style>
+<div class="wrap">
+  <div>
+    <h1>Evidence trail</h1>
+    <p class="sub">A guideline tells you what to do. This shows the MSF research that concerns the
+       same clinical question — so a recommendation can be traced, and a field study can be seen
+       to have reached practice.</p>
+  </div>
+  <div class="stats" id="stats"></div>
+
+  <div class="cols">
+    <div class="card">
+      <h2>Guideline chapters with evidence</h2>
+      <input type="search" id="q" placeholder="filter chapters…" autocomplete="off">
+      <div class="list" id="list"></div>
+    </div>
+    <div class="card">
+      <h2 id="rh">Research behind it</h2>
+      <div id="links"><p class="empty">Choose a chapter on the left.</p></div>
+    </div>
+  </div>
+
+  <p class="caveat" id="caveat"></p>
+</div>
+<script>
+const $ = id => document.getElementById(id);
+let D = null, sel = null;
+
+function renderList(filter=""){
+  const f = filter.trim().toLowerCase();
+  const rows = D.guidelines.filter(g => g.n_links > 0 &&
+    (!f || g.title.toLowerCase().includes(f) || g.id.toLowerCase().includes(f)));
+  $("list").innerHTML = rows.map(g => `
+    <div class="g" data-id="${g.id}" aria-selected="${g.id === sel}">
+      ${g.title.replace(/[<>]/g, "")}
+      <small>${g.id} · ${g.language.toUpperCase()}${g.year ? " · " + g.year : ""} ·
+        ${g.n_links} linked stud${g.n_links === 1 ? "y" : "ies"}</small>
+    </div>`).join("") || `<p class="empty">No chapter matches that.</p>`;
+}
+
+function renderLinks(id){
+  sel = id;
+  const g = D.guidelines.find(x => x.id === id);
+  const ls = D.links[id] || [];
+  $("rh").textContent = "Research behind " + id;
+  $("links").innerHTML = `<p class="meta" style="color:var(--dim);font-size:13px;margin:0 0 11px">
+      ${g.title.replace(/[<>]/g, "")}</p>` + ls.map(l => `
+    <div class="lk">
+      <h3>${l.title.replace(/[<>]/g, "")}</h3>
+      <div class="meta">${l.doc_id} · ${l.genre}${l.year ? " · " + l.year : ""} ·
+        ${l.language.toUpperCase()} · strength ${l.score.toFixed(3)}</div>
+      <div class="terms">${l.shared_terms.map(t => `<span>${t}</span>`).join("")}</div>
+    </div>`).join("");
+  renderList($("q").value);
+}
+
+$("list").addEventListener("click", e => {
+  const g = e.target.closest(".g");
+  if (g) renderLinks(g.dataset.id);
+});
+$("q").addEventListener("input", e => renderList(e.target.value));
+
+(async () => {
+  D = await fetch("/api/trail").then(r => r.json());
+  if (D.error){ $("links").innerHTML = `<p class="empty">${D.error}</p>`; return; }
+  const linked = D.n_linked, total = D.n_guidelines;
+  $("stats").innerHTML = `
+    <span class="pill"><b>${total}</b> guideline chapters</span>
+    <span class="pill"><b>${D.n_research}</b> research documents</span>
+    <span class="pill"><b>${linked}</b> chapters with a defensible link</span>
+    <span class="pill"><b>${total - linked}</b> showing nothing rather than a weak one</span>`;
+  $("caveat").textContent = D.method +
+    " The shared terms are listed on every link so a clinician can judge it, rather than trust a score.";
+  renderList();
+  const first = D.guidelines.find(g => g.n_links > 0);
+  if (first) renderLinks(first.id);
+})();
+</script>
