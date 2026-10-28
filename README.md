@@ -26,6 +26,19 @@ python scripts/evaluate.py                                                      
 python scripts/build_abbreviations.py --data "D4GC data" --csv data/documentation.csv   # mine "long form (ABBR)" -> data/abbreviations.csv
 ```
 
+**HQ AI layer: open weights, no vendor.** Enrichment (summaries, multilingual keywords, grounded Q&A) runs
+at HQ on **Mistral 7B Instruct, an open-weight model served locally by Ollama** through its OpenAI-format
+endpoint (`http://localhost:11434/v1`): USD 0, no API key, no data leaves HQ. The provider is configuration,
+not code: set `LLM_BASE_URL` / `LLM_API_KEY` / `LLM_MODEL` (and `VLM_*` for scans) to switch, e.g. to the
+Mistral API for a fast full run. No provider or key is hardcoded. The field device never runs an LLM.
+```
+python scripts/hq_build.py --data "D4GC data"        # whole HQ pipeline, SKIPPED stages if a tool/model is missing
+python scripts/hq_enrich.py --data "D4GC data"       # 17-doc demo sample (default); --all for everything
+python scripts/ablation.py --data "D4GC data"        # ablation table on data/eval_queries.csv
+```
+Measured: 183 s/doc locally (laptop, 2 parallel requests), Q&A kept only if the evidence quote is verbatim
+in the document and every number in the answer appears there.
+
 **Digitise anything** (HQ only; the field never runs OCR or a model):
 ```
 python scripts/digitise.py --data "D4GC data" --list   # PDFs with < 300 parsed chars/page + photos in data/inbox/

@@ -58,7 +58,9 @@ also such any all some more most other only very per via vs if so up out each bo
 best find show me need want please information info document documents give tell i my
 le la les un une des du de d l et ou en dans sur pour par avec au aux ce ces cet cette est sont qui que quoi
 dont ou plus moins pas ne se sa son ses leur leurs nous vous il elle ils elles comme chez
+comment quel quelle quels quelles combien pourquoi quand faut doit atteint atteinte atteints
 el los las una unos unas del y o en por para con sin que es son su sus al lo como mas pero
+cual cuales cuando donde porque debo hay
 في من على الى إلى عن مع هذا هذه ذلك التي الذي ان أن او أو ما لا كما قد
 """.split())
 STOPWORDS = {normalize_token(w) for w in STOPWORDS}

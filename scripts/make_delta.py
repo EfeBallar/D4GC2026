@@ -11,7 +11,13 @@ ap.add_argument("--index", default=str(ROOT / "build/index.db"), help="full inde
 ap.add_argument("--ids", required=True, help="comma-separated doc ids")
 ap.add_argument("--version", default=time.strftime("%Y-%m-%d-%H%M"))
 ap.add_argument("--out", default=None, help="default: build/update_<version>.db")
+ap.add_argument("--site-profile", default="", help="profile id in data/profiles.json: its topics raise urgency")
 a = ap.parse_args()
 ids = [x.strip() for x in a.ids.split(",") if x.strip()]
-r = make_delta(a.index, ids, a.out or str(ROOT / f"build/update_{a.version}.db"), a.version)
-print(f"delta {r['version']}: {r['docs']} docs, {r['chunks']} passages -> {r['path']} ({r['kb']} KB)")
+site = set()
+if a.site_profile:
+    import json
+    site = set(next(p for p in json.loads((ROOT / "data/profiles.json").read_text())["profiles"]
+                    if p["id"] == a.site_profile)["topics"])
+r = make_delta(a.index, ids, a.out or str(ROOT / f"build/update_{a.version}.db"), a.version, site_topics=site)
+print(f"delta {r['version']}: {r['docs']} docs, {r['chunks']} passages -> {r['path']} ({r['kb']} KB) · urgency {r['urgency']}")

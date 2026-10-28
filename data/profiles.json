@@ -1,0 +1,15 @@
+{
+  "_doc": "Field profiles: BOOST results, never filter. +0.15 per matching topic (max 3), +0.10 for a preferred language. Edit country and topics freely; topics use /api/topics names.",
+  "profiles": [
+    {"id": "surgeon_conflict_trauma", "label": "Surgeon · conflict / trauma", "situation": "conflict", "country": "",
+     "topics": ["surgery", "wound", "burns", "violence", "hospital", "caesarean"], "languages": ["en", "fr", "ar"]},
+    {"id": "nurse_cholera_outbreak", "label": "Nurse · cholera outbreak", "situation": "outbreak", "country": "",
+     "topics": ["cholera", "diarrhoea", "dehydration", "epidemic", "sanitation", "vaccination"], "languages": ["en", "fr"]},
+    {"id": "midwife_maternal_care", "label": "Midwife · maternal care", "situation": "maternal", "country": "",
+     "topics": ["childbirth", "pregnancy", "caesarean", "postpartum haemorrhage", "anaemia"], "languages": ["en", "fr"]},
+    {"id": "doctor_malnutrition_camp", "label": "Doctor · malnutrition camp", "situation": "malnutrition", "country": "",
+     "topics": ["malnutrition", "children", "measles", "diarrhoea", "malaria"], "languages": ["en", "fr"]},
+    {"id": "mhpss_displacement", "label": "MHPSS · displacement", "situation": "displacement", "country": "",
+     "topics": ["mental health", "displaced", "refugees", "violence"], "languages": ["en", "ar", "fr"]}
+  ]
+}

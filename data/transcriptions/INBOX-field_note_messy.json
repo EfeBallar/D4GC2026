@@ -1,0 +1,25 @@
+{
+  "source": "tesseract",
+  "model": "tesseract 5.5.1 (eng)",
+  "pages": 1,
+  "unreadable_count": 0,
+  "original": "field_note_messy.jpg",
+  "seconds": 0.2,
+  "created_at": "2026-10-28 16:04:28",
+  "text_source": "ocr_tesseract",
+  "ocr_confidence": 0.0,
+  "engines": {
+    "tesseract": 1,
+    "vlm": 0
+  },
+  "page_info": [
+    {
+      "page": 1,
+      "engine": "tesseract",
+      "model": "tesseract 5.5.1 (eng)",
+      "mean_conf": 0.0,
+      "unreadable_ratio": 0.0
+    }
+  ],
+  "status": "photo_only_queued"
+}

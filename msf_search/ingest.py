@@ -164,6 +164,10 @@ def load_collection(data_dir: str, csv_path: str | None = None, boilerplate_min_
             if img.suffix.lower() not in IMAGE_EXT or not t.exists():
                 continue
             raw = t.read_text(encoding="utf-8", errors="ignore")
+            meta_j = json.loads(t.with_suffix(".json").read_text()) if t.with_suffix(".json").exists() else {}
+            if meta_j.get("status") == "photo_only_queued":  # OCR unusable: findable as a photo, no OCR text
+                raw = (f"Field note photo {img.stem.replace('_', ' ')} ({img.name}). Handwritten, unreadable by OCR: "
+                       "photo only, queued for HQ transcription.")
             docs.append(Doc(id=inbox_id(img), genre="Field Note (handwritten)", language="unknown",
                             text=clean_markdown(raw), md_path=str(t), original_path=str(img),
                             md5=hashlib.md5(raw.encode("utf-8")).hexdigest(), transcribed=True))

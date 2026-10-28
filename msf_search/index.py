@@ -11,9 +11,12 @@ import time
 import zlib
 from pathlib import Path
 
+from collections import Counter
+
 from .chunker import chunk_document
+from .glossary import Glossary
 from .ingest import load_collection, quality_report
-from .textnorm import normalize_for_index
+from .textnorm import normalize_for_index, tokenize
 
 SCHEMA = """
 PRAGMA journal_mode=OFF;
@@ -26,7 +29,7 @@ CREATE TABLE docs(
   text_source TEXT, ocr_confidence REAL, machine_generated INTEGER, generator TEXT, model TEXT, generated_at TEXT,
   enriched INTEGER, importance INTEGER, importance_reason TEXT, audience TEXT, actionable INTEGER, summary TEXT,
   topics TEXT, countries TEXT, situation TEXT, doc_type TEXT, superseded_hint TEXT, enrich_terms TEXT,
-  enrich_model TEXT, enrich_at TEXT);
+  enrich_model TEXT, enrich_at TEXT, glossary_topics TEXT);
 CREATE TABLE chunks(id INTEGER PRIMARY KEY, doc_id TEXT, ord INTEGER, heading TEXT, text BLOB,
   kind TEXT, text_source TEXT, ocr_confidence REAL, machine_generated INTEGER, generator TEXT, model TEXT,
   generated_at TEXT, source_ord INTEGER);
@@ -89,7 +92,7 @@ def chunk_provenance(d, heading: str) -> tuple:
     """(text_source, ocr_confidence, machine_generated, generator, model, generated_at) for a text passage.
     OCR passages carry their own page's engine and confidence; the kept embedded text layer is "parsed"."""
     m = _PAGE.match(heading or "")
-    if d.text_source == "parsed" or (d.page_info and not m):
+    if d.text_source == "parsed" or heading == "Embedded text layer":  # kept original PDF text layer
         return ("parsed", None, 0, None, None, None)
     page = d.page_info.get(int(m.group(1)), {}) if m else {}
     if page:
@@ -99,13 +102,28 @@ def chunk_provenance(d, heading: str) -> tuple:
     return (d.text_source, d.ocr_confidence, 0, None, d.ocr_model, d.ocr_at)
 
 
+def glossary_topics(text: str, glossary, min_hits: int = 3) -> list[str]:
+    """Curated glossary concepts a document mentions at least min_hits times (any language variant).
+    Topics without any LLM, for every document."""
+    toks = tokenize(text)
+    grams = Counter()
+    for n in range(1, glossary.max_len + 1):
+        grams.update(zip(*(toks[i:] for i in range(n))))
+    hits = Counter()
+    for concept, variants in glossary.variants.items():
+        hits[concept] = sum(grams[v] for v in variants)
+    return sorted(c for c, n in hits.items() if n >= min_hits)
+
+
 def build_index(data_dir: str, csv_path: str | None, out_path: str,
                 max_words: int = 180, overlap: int = 30, verbose: bool = True,
                 exclude_ids: set | None = None, transcriptions_dir: str | None = None,
-                inbox_dir: str | None = None, enrichment_path: str | None = None) -> dict:
+                inbox_dir: str | None = None, enrichment_path: str | None = None,
+                glossary_path: str | None = None, synthetic: bool = True) -> dict:
     t0 = time.time()
     docs = load_collection(data_dir, csv_path, transcriptions_dir=transcriptions_dir, inbox_dir=inbox_dir)
     enrichment = load_enrichment(enrichment_path)
+    glossary = Glossary(glossary_path) if glossary_path else None
     llm_abbr = {}
     if exclude_ids:  # e.g. a base library that a delta update completes later
         docs = [d for d in docs if d.id not in exclude_ids]
@@ -123,7 +141,7 @@ def build_index(data_dir: str, csv_path: str | None, out_path: str,
         e = enrichment.get(d.id) if indexable else None
         terms = enrich_terms(e, d.text) if e else ""
         con.execute(
-            "INSERT INTO docs VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
+            "INSERT INTO docs VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
             (d.id, d.genre, d.language, d.title, d.quality, d.duplicate_of,
              json.dumps(d.also_filed_as), Path(d.original_path).name if d.original_path else "",
              len(d.text), len(chunks), (e or {}).get("year") or d.year, int(d.transcribed),
@@ -133,7 +151,8 @@ def build_index(data_dir: str, csv_path: str | None, out_path: str,
              int(bool((e or {}).get("actionable"))) if e else None, (e or {}).get("summary") or None,
              json.dumps((e or {}).get("topics", [])), json.dumps((e or {}).get("countries", [])),
              (e or {}).get("situation"), (e or {}).get("doc_type"), (e or {}).get("superseded_hint"), terms,
-             (e or {}).get("model"), (e or {}).get("generated_at")))
+             (e or {}).get("model"), (e or {}).get("generated_at"),
+             json.dumps(glossary_topics(d.text, glossary) if indexable and glossary else [])))
         for c in chunks:
             cur = con.execute(
                 "INSERT INTO chunks(doc_id, ord, heading, text, kind, text_source, ocr_confidence, machine_generated, "
@@ -143,7 +162,7 @@ def build_index(data_dir: str, csv_path: str | None, out_path: str,
             con.execute("INSERT INTO chunks_fts(rowid, title, heading, body, enrich) VALUES (?,?,?,?,?)",
                         (cur.lastrowid, *fts_row(d.title, c.heading, c.text, terms)))
         n_chunks += len(chunks)
-        if e:
+        if e and synthetic:
             for a in e.get("abbreviations", []):
                 if re.search(rf"\b{re.escape(a['abbr'])}\b", d.text):  # only abbreviations the doc really uses
                     llm_abbr.setdefault(a["abbr"], set()).add(a["long"].strip().lower())

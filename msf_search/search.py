@@ -71,13 +71,18 @@ class Concept:
 
 class Searcher:
     def __init__(self, index_path: str, glossary_path: str | None = None, dense=None,
-                 abbreviations_path: str | None = None):
+                 abbreviations_path: str | None = None, qvec=None, profiles_path: str | None = None,
+                 use_importance: bool = True):
         self.index_path = index_path
         self.con = sqlite3.connect(f"file:{index_path}?mode=ro", uri=True, check_same_thread=False)
         self.glossary = Glossary(glossary_path)
         if abbreviations_path and Path(abbreviations_path).exists():
             self.glossary.load_abbreviations(abbreviations_path)
         self.dense = dense
+        self.qvec = qvec  # optional HyDE question vectors (qvec.py)
+        self.use_importance = use_importance  # off only for the ablation table
+        self.profiles = {x["id"]: x for x in json.loads(Path(profiles_path).read_text(encoding="utf-8"))["profiles"]} \
+            if profiles_path and Path(profiles_path).exists() else {}
         self._data_version = None
         self.refresh()
         row = self.con.execute("SELECT value FROM meta WHERE key='llm_abbreviations'").fetchone()
@@ -104,12 +109,20 @@ class Searcher:
                              "summary": r[21], "topics": json.loads(r[22] or "[]"),
                              "countries": json.loads(r[23] or "[]"), "situation": r[24], "doc_type": r[25],
                              "superseded_hint": r[26],
-                             "summary_provenance": provenance("parsed", None, 1, "summary", r[27], r[28]) if r[21] else None}
+                             "summary_provenance": provenance("parsed", None, 1, "summary", r[27], r[28]) if r[21] else None,
+                             "glossary_topics": json.loads(r[29] or "[]")}
                      for r in self.con.execute(
                          "SELECT id, genre, language, title, quality, also_filed_as, original_name, n_chunks, year, transcribed, "
                          f"{PROVENANCE_COLS}, enriched, importance, importance_reason, audience, actionable, summary, "
-                         "topics, countries, situation, doc_type, superseded_hint, enrich_model, enrich_at FROM docs")}
+                         "topics, countries, situation, doc_type, superseded_hint, enrich_model, enrich_at, glossary_topics "
+                         "FROM docs")}
+        self.topic_docs = {}
         for meta in self.docs.values():
+            # topics = HQ enrichment topics + curated glossary concepts the doc mentions >= 3 times
+            meta["topics"] = list(dict.fromkeys(t.lower() for t in meta["topics"] + meta["glossary_topics"]))
+            if meta["n_chunks"]:
+                for tp in meta["topics"]:
+                    self.topic_docs.setdefault(tp, set()).add(meta["id"])
             label, rank, w = GENRE_TIER.get(meta["genre"], (DEFAULT_TIER[0], len(EVIDENCE_TIERS) + 1, DEFAULT_TIER[1]))
             meta.update({"tier": label, "tier_rank": rank, "prior": w})
 
@@ -138,10 +151,70 @@ class Searcher:
         return {r[0] for r in rows}, per_doc
 
     # ---------- main entry ----------
-    def search(self, query: str, k: int = 10, languages: list | None = None, genres: list | None = None,
-               strict: bool = True, candidates: int = 400) -> dict:
+    @staticmethod
+    def _profile_boost(prof: dict, meta: dict) -> float:
+        n_topics = min(3, len(set(prof["topics"]) & set(meta["topics"])))
+        return round(0.15 * n_topics + (0.10 if meta["language"] in prof.get("languages", []) else 0.0), 2)
+
+    def importance_distribution(self) -> dict:
+        """{"1": n, ...} over enriched docs; the UI hides the badge while it cannot discriminate."""
+        out = {}
+        for m in self.docs.values():
+            if m["enriched"] and m["importance"]:
+                out[str(m["importance"])] = out.get(str(m["importance"]), 0) + 1
+        return out
+
+    def topics(self, min_docs: int = 2) -> list[dict]:
+        out = [{"topic": tp, "count": len(ds), "enriched": sum(1 for d in ds if self.docs[d]["enriched"]),
+                "from_glossary": tp in self.glossary.variants}
+               for tp, ds in self.topic_docs.items() if len(ds) >= min_docs]
+        return sorted(out, key=lambda x: (-x["count"], x["topic"]))
+
+    def browse(self, topic: str, k: int = 20, languages: list | None = None, genres: list | None = None) -> dict:
+        """Topic chip without a query: importance -> evidence tier -> aboutness (share of matching passages)."""
         t0 = time.perf_counter()
         self.refresh()
+        allowed = [d for d in self.topic_docs.get(topic, set())
+                   if (not languages or self.docs[d]["language"] in languages)
+                   and (not genres or self.docs[d]["genre"] in genres)]
+        c = Concept(topic, list(self.glossary.variants.get(topic) or [tuple(tokenize(topic))]))
+        rows = self.con.execute("SELECT f.rowid, c.doc_id FROM chunks_fts f JOIN chunks c ON c.id=f.rowid "
+                                "WHERE chunks_fts MATCH ? ORDER BY bm25(chunks_fts, 4.0, 2.0, 1.0, 1.5)", (c.fts(),)).fetchall()
+        first, hits = {}, {}
+        for cid, did in rows:
+            first.setdefault(did, cid)
+            hits[did] = hits.get(did, 0) + 1
+        results = []
+        for did in allowed:
+            cid = first.get(did) or (self.con.execute("SELECT id FROM chunks WHERE doc_id=? ORDER BY ord LIMIT 1",
+                                                      (did,)).fetchone() or [None])[0]
+            if cid is None:
+                continue
+            share = hits.get(did, 0) / max(1, self.docs[did]["n_chunks"])  # uncapped, so browse order has no ties
+            about = min(1.0, 6.0 * share)
+            kind = self.con.execute("SELECT kind FROM chunks WHERE id=?", (cid,)).fetchone()[0] or "text"
+            results.append({"doc_id": did, "score": round(about, 4), "confidence": "high", "passage_coverage": None,
+                            "doc_coverage": None, "aboutness": round(about, 2), "chunk_id": cid, "matched_via": kind,
+                            "text_chunk_id": cid if kind == "text" else None, "topic_share": round(share, 3)})
+        results.sort(key=lambda r: (self.docs[r["doc_id"]]["importance"] or 3, self.docs[r["doc_id"]]["tier_rank"],
+                                    -r["topic_share"], r["doc_id"]))
+        results = results[:k]
+        for r in results:
+            self._decorate(r, [c])
+        return {"query": "", "topic": topic, "concepts": [{"label": topic, "weight": 1.0,
+                                                            "variants": [" ".join(v) for v in c.variants]}],
+                "unknown_terms": [], "results": results, "weaker_matches": [], "quick_answer": None,
+                "abstained": not results, "reason": "" if results else "no document with this topic",
+                "ms": round((time.perf_counter() - t0) * 1000, 1)}
+
+    def search(self, query: str, k: int = 10, languages: list | None = None, genres: list | None = None,
+               strict: bool = True, candidates: int = 400, topic: str | None = None,
+               profile: str | None = None) -> dict:
+        if topic and not (query or "").strip():
+            return self.browse(topic, k, languages, genres)
+        t0 = time.perf_counter()
+        self.refresh()
+        allowed = self.topic_docs.get(topic, set()) if topic else None
         concepts = self.parse(query)
         if not concepts:
             return {"query": query, "results": [], "abstained": True, "reason": "empty query", "ms": 0}
@@ -199,6 +272,8 @@ class Searcher:
                 continue
             if genres and meta["genre"] not in genres:
                 continue
+            if allowed is not None and did not in allowed:
+                continue
             ccov = sum(c.weight for c, cs in zip(concepts, chunk_sets) if cid in cs) / total_w
             s_lex = lex.get(cid, 0.0) / max_lex
             s = s_lex * (0.2 + 0.8 * ccov)
@@ -234,7 +309,9 @@ class Searcher:
                             "aboutness": round(about, 2), "chunk_id": d["best_chunk"],
                             "matched_via": kind.get(d["best_chunk"], "text"), "text_chunk_id": d.get("best_text_chunk")})
         tier = {"high": 0, "medium": 1, "low": 2}
-        results.sort(key=lambda r: (tier[r["confidence"]], -r["score"]))
+        if self.qvec is not None:
+            self._merge_qvec(query, results, unknown_w, total_w, languages, genres, allowed)
+        results.sort(key=lambda r: (tier[r["confidence"]], -r.get("rrf", 0), -r["score"]))
 
         # False-positive guard: relative score cut-off + confidence filter.
         top = max((r["score"] for r in results), default=0)
@@ -242,20 +319,29 @@ class Searcher:
         weaker = [r for r in results if r["confidence"] == "low"]
         if strict:
             results = [r for r in results if r["confidence"] != "low"]
-        for r in results:  # importance prior, after the gate
-            r["score"] = round(r["score"] * IMPORTANCE_PRIOR.get(self.docs[r["doc_id"]]["importance"], 1.0), 4)
-        results.sort(key=lambda r: (tier[r["confidence"]], -r["score"]))
+        prof = self.profiles.get(profile) if profile else None
+        for r in results:  # importance prior and profile boost, after the gate (they reorder, never filter)
+            if self.use_importance:
+                r["score"] = round(r["score"] * IMPORTANCE_PRIOR.get(self.docs[r["doc_id"]]["importance"], 1.0), 4)
+            if prof:
+                r["profile_boost"] = self._profile_boost(prof, self.docs[r["doc_id"]])
+                r["score"] = round(r["score"] * (1 + r["profile_boost"]), 4)
+                if "rrf" in r:
+                    r["rrf"] = round(r["rrf"] * (1 + r["profile_boost"]), 6)
+        results.sort(key=lambda r: (tier[r["confidence"]], -r.get("rrf", 0), -r["score"]))
         results = results[:k]
         for r in results + weaker[:3]:
             self._decorate(r, concepts)
 
         ms = round((time.perf_counter() - t0) * 1000, 1)
         unknown = [c.label for c in concepts if not getattr(c, "found", True)]
-        return {"query": query, "concepts": [{"label": c.label, "weight": round(c.weight, 2),
+        return {"query": query, "topic": topic, "concepts": [{"label": c.label, "weight": round(c.weight, 2),
                                               "variants": [" ".join(v) for v in c.variants]} for c in concepts],
                 "unknown_terms": unknown, "results": results,
                 "weaker_matches": weaker[:3] if strict else [],
                 "quick_answer": self._quick_answer(results[0]) if results and results[0]["matched_via"] == "qa" else None,
+                "profile": {"id": prof["id"], "label": prof["label"],
+                            "boosted": sum(1 for r in results if r.get("profile_boost"))} if prof else None,
                 "abstained": not results,
                 "reason": "" if results else "no document covers enough of the query",
                 "ms": ms}
@@ -282,11 +368,41 @@ class Searcher:
         r.update({k: meta[k] for k in ("enriched", "importance", "importance_reason", "audience", "actionable",
                                         "summary", "summary_provenance", "topics", "countries", "situation")})
         r["evidence"] = self._evidence(r, concepts) if r["matched_via"] != "text" else None
+        conf = meta["provenance"]["ocr_confidence"]
+        r["ocr_status"] = (None if meta["provenance"]["text_source"] == "parsed" or conf is None else
+                           "photo_only_queued" if conf < 0.45 else "low_confidence" if conf < 0.60 else "ok")
+
+    def _merge_qvec(self, query, results, unknown_w, total_w, languages, genres, allowed):
+        """RRF (k=60) of keyword and question-vector rankings. A vector match lifts a doc to "medium"
+        (partial) at most, and never when part of the query is unknown to the library."""
+        qs = self.qvec.doc_scores(query)
+        kw_rank = {r["doc_id"]: i for i, r in enumerate(sorted(results, key=lambda r: -r["score"]), 1)}
+        q_rank = {d: i for i, (d, _) in enumerate(sorted(qs.items(), key=lambda kv: -kv[1][0]), 1)}
+        top = max((r["score"] for r in results), default=1.0) or 1.0
+        by_doc = {r["doc_id"]: r for r in results}
+        if unknown_w < 0.5 * total_w:  # keep the unknown-term guard
+            for did, (cos, cid) in qs.items():
+                meta = self.docs.get(did)
+                if (cos < self.qvec.threshold or meta is None or (languages and meta["language"] not in languages)
+                        or (genres and meta["genre"] not in genres) or (allowed is not None and did not in allowed)):
+                    continue
+                r = by_doc.get(did)
+                if r is None:
+                    r = {"doc_id": did, "score": round(top * cos, 4), "confidence": "medium", "passage_coverage": 0.0,
+                         "doc_coverage": 0.0, "aboutness": 0.0, "chunk_id": cid, "matched_via": "qvec",
+                         "text_chunk_id": None}
+                    results.append(r)
+                    by_doc[did] = r
+                elif r["confidence"] == "low":
+                    r["confidence"], r["chunk_id"], r["matched_via"] = "medium", cid, "qvec"
+                r["qvec_cosine"] = round(cos, 3)
+        for r in results:
+            r["rrf"] = round(1 / (60 + kw_rank.get(r["doc_id"], 1000)) + 1 / (60 + q_rank.get(r["doc_id"], 1000)), 5)
 
     def _evidence(self, r: dict, concepts) -> dict | None:
         """The ORIGINAL passage behind a machine-made hit (summary / Q&A), so the UI can always show the source."""
         cid = None
-        if r["matched_via"] == "qa":
+        if self.con.execute("SELECT kind FROM chunks WHERE id=?", (r["chunk_id"],)).fetchone()[0] == "qa":
             row = self.con.execute("SELECT c2.id FROM chunks c1 JOIN chunks c2 ON c2.doc_id=c1.doc_id "
                                    "AND c2.ord=c1.source_ord WHERE c1.id=?", (r["chunk_id"],)).fetchone()
             cid = row[0] if row else None
