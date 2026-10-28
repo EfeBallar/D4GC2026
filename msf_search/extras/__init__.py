@@ -49,6 +49,8 @@ def handle(path: str, qs: dict, searcher):
         return _page("radar.html")
     if path == "/api/radar":
         return _json(radar.payload(DATA / "radar_sim.json", ROOT / "logs" / "unanswered.jsonl"))
+    if path == "/hq":
+        return _page("hq.html")
     if path == "/trail":
         return _page("trail.html")
     if path == "/api/trail":
