@@ -93,6 +93,63 @@ def _one_message(body: str, tail: str) -> str:
     return text
 
 
+LANGUAGE_NAME = {"en": "English", "fr": "French", "es": "Spanish", "ar": "Arabic"}
+_ARABIC = re.compile(r"[\u0600-\u06FF]")
+# Function words that mark a language even when no medical term is recognised.
+_MARKERS = {
+    "fr": {"le", "la", "les", "des", "du", "de", "et", "pour", "avec", "dans", "sur", "chez",
+           "comment", "traiter", "traitement", "enfant", "enfants", "femme", "soins", "aigue"},
+    "es": {"el", "los", "las", "una", "por", "para", "con", "sin", "que", "del", "como",
+           "tratar", "tratamiento", "nino", "ninos", "mujer", "aguda", "grave"},
+}
+_glossary_langs: dict | None = None
+
+
+def _glossary_language_tokens(path: str = "data/glossary.csv") -> dict:
+    """Token sets per language, taken from the glossary the search already uses.
+
+    Domain terms identify a language far more reliably than function words in a short query:
+    "paludisme" is unambiguously French, "hemorragia posparto" unambiguously Spanish.
+    """
+    global _glossary_langs
+    if _glossary_langs is not None:
+        return _glossary_langs
+    import csv
+    out = {"en": set(), "fr": set(), "es": set(), "ar": set()}
+    try:
+        with open(path, encoding="utf-8") as f:
+            for row in csv.DictReader(f):
+                for lang in out:
+                    for variant in (row.get(lang) or "").split("|"):
+                        for tok in variant.split():
+                            if len(tok) > 2:
+                                out[lang].add(tok.strip().lower())
+    except OSError:
+        pass
+    # A term shared by several languages identifies none of them.
+    for lang in out:
+        others = set().union(*(out[o] for o in out if o != lang))
+        out[lang] = out[lang] - others
+    _glossary_langs = out
+    return out
+
+
+def detect_language(query: str, glossary_path: str = "data/glossary.csv") -> str:
+    """Which language the question is in, so the overview can be asked for by name."""
+    q = (query or "").strip()
+    if not q:
+        return "en"
+    if _ARABIC.search(q):
+        return "ar"
+    toks = {t for t in re.findall(r"\w+", q.lower()) if t}
+    gl = _glossary_language_tokens(glossary_path)
+    score = {}
+    for lang in ("fr", "es", "en"):
+        score[lang] = len(toks & gl.get(lang, set())) * 2 + len(toks & _MARKERS.get(lang, set()))
+    best = max(score, key=lambda k: score[k])
+    return best if score[best] else "en"
+
+
 OVERVIEW_SYSTEM = (
     "You write a one-line description of a document for a text message to a health worker. "
     "Use ONLY the passage you are given. Never add a fact, dose, number or drug that is not in it. "
@@ -101,7 +158,8 @@ OVERVIEW_SYSTEM = (
 )
 
 
-def overview(query: str, title: str, genre: str, passage: str, limit: int, timeout: float = 20.0) -> dict:
+def overview(query: str, title: str, genre: str, passage: str, limit: int,
+             lang: str = "en", timeout: float = 20.0) -> dict:
     """One-line description of the document, in the question's language.
 
     Deliberately the same model and the same configuration as the chat (chat.config(): env
@@ -114,13 +172,17 @@ def overview(query: str, title: str, genre: str, passage: str, limit: int, timeo
     from ..chat import config
     cfg = config()
     budget = max(40, limit - 10)
+    language = LANGUAGE_NAME.get(lang, "English")
     body = json.dumps({
         "model": cfg["model"],
         "messages": [
             {"role": "system", "content": OVERVIEW_SYSTEM},
             {"role": "user", "content": f"QUESTION: {query}\n\nDOCUMENT: {title} ({genre})\n\n"
                                         f"PASSAGE: {passage[:1200]}\n\n"
-                                        f"Describe the document in at most {budget} characters."},
+                                        f"Describe the document in {language}, "
+                                        f"in at most {budget} characters. "
+                                        f"Write your reply in {language} even though the passage "
+                                        f"may be in another language."},
         ],
         "stream": False, "temperature": 0.1, "max_tokens": 120,
     }).encode("utf-8")
@@ -140,7 +202,8 @@ def overview(query: str, title: str, genre: str, passage: str, limit: int, timeo
     tail = " (AI)"                       # machine-made text never travels unlabelled
     # Size against the ANSWER, not the question: "hemorragia posparto" is plain ASCII, but a reply
     # containing "guia" with an accent is UCS-2, where the limit is 70 and not 160.
-    return {"ok": True, "text": _one_message(text, tail), "model": cfg["model"]}
+    return {"ok": True, "text": _one_message(text, tail), "model": cfg["model"],
+            "language": lang}
 
 
 def reply(searcher, query: str, with_overview: bool = True) -> dict:
@@ -178,12 +241,16 @@ def reply(searcher, query: str, with_overview: bool = True) -> dict:
 
     ov = None
     if with_overview:
-        _, ov_limit = encoding_of(q)     # the reply is written in the question's language
-        ov = overview(q, meta.get("title") or top["doc_id"], meta.get("genre") or "", body, ov_limit)
+        q_lang = detect_language(q)
+        # Arabic cannot avoid UCS-2, so its budget is 70 regardless of what the question looked like.
+        ov_limit = UCS2_LIMIT if q_lang == "ar" else GSM7_LIMIT
+        ov = overview(q, meta.get("title") or top["doc_id"], meta.get("genre") or "",
+                      body, ov_limit, lang=q_lang)
         if ov.get("ok"):
             ov["cost"] = segments(ov["text"])
 
-    return {"ok": True, "query": q, "sms": text, "cost": segments(text), "overview": ov,
+    return {"ok": True, "query": q, "sms": text, "cost": segments(text),
+            "query_language": detect_language(q), "overview": ov,
             "doc_id": top["doc_id"], "title": meta.get("title"), "tier": meta.get("tier"),
             "language": meta.get("language"), "confidence": top["confidence"],
             "ms": r.get("ms", 0.0)}

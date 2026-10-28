@@ -33,8 +33,10 @@
   ];
 
   function isDark() {
+    /* Measure the page, never guess. Asking the OS instead gives a light bar on an always-dark
+       page whenever the laptop is in light mode - which is only invisible to whoever happens to
+       run the same setting as the page. Called after <body> exists, so this always measures. */
     try {
-      if (!document.body) return matchMedia("(prefers-color-scheme: dark)").matches;
       var bg = getComputedStyle(document.body).backgroundColor || "";
       var m = bg.match(/\d+(\.\d+)?/g);
       if (!m || m.length < 3) return matchMedia("(prefers-color-scheme: dark)").matches;
@@ -44,12 +46,13 @@
   }
 
   var path = location.pathname.replace(/\/+$/, "") || "/";
-  var dark = isDark();
-  var c = dark
+  var css = document.createElement("style");
+  document.head.appendChild(css);
+
+  function paint() {
+  var c = isDark()
     ? {bg: "#12161d", line: "#2a3340", ink: "#e6edf3", dim: "#8b949e", red: "#ff4d5e", pillbg: "#0d1117"}
     : {bg: "#ffffff", line: "#e3e1dd", ink: "#1d1d1f", dim: "#6b6b70", red: "#e2001a", pillbg: "#f6f5f3"};
-
-  var css = document.createElement("style");
   css.textContent = [
     "#msfnav{background:" + c.bg + ";border-bottom:1px solid " + c.line + ";position:sticky;top:0;z-index:50;font:15px/1.5 system-ui,-apple-system,'Segoe UI',Roboto,sans-serif}",
     "#msfnav *{box-sizing:border-box}",
@@ -70,7 +73,7 @@
     "#msfnav svg{width:17px;height:17px;flex:none}",
     "@media (max-width:560px){#msfnav .mn-lab{display:none}#msfnav .mn-sep{margin:8px 6px}}"
   ].join("\n");
-  document.head.appendChild(css);
+  }
 
   function link(it) {
     return '<a href="' + it.href + '"' + (it.href === path ? ' aria-current="page"' : '') + '>' +
@@ -97,6 +100,12 @@
     el.setAttribute("aria-label", "Sections");
     el.innerHTML = html;
     document.body.insertBefore(el, document.body.firstChild);
+    paint();
+    try {
+      matchMedia("(prefers-color-scheme: dark)").addEventListener("change", function () {
+        setTimeout(paint, 0);   // let the page restyle first, then measure it again
+      });
+    } catch (e) {}
   }
   if (document.body) insert();
   else document.addEventListener("DOMContentLoaded", insert);
