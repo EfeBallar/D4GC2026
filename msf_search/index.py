@@ -119,7 +119,7 @@ def build_index(data_dir: str, csv_path: str | None, out_path: str,
                 max_words: int = 180, overlap: int = 30, verbose: bool = True,
                 exclude_ids: set | None = None, transcriptions_dir: str | None = None,
                 inbox_dir: str | None = None, enrichment_path: str | None = None,
-                glossary_path: str | None = None) -> dict:
+                glossary_path: str | None = None, synthetic: bool = True) -> dict:
     t0 = time.time()
     docs = load_collection(data_dir, csv_path, transcriptions_dir=transcriptions_dir, inbox_dir=inbox_dir)
     enrichment = load_enrichment(enrichment_path)
@@ -162,7 +162,7 @@ def build_index(data_dir: str, csv_path: str | None, out_path: str,
             con.execute("INSERT INTO chunks_fts(rowid, title, heading, body, enrich) VALUES (?,?,?,?,?)",
                         (cur.lastrowid, *fts_row(d.title, c.heading, c.text, terms)))
         n_chunks += len(chunks)
-        if e:
+        if e and synthetic:
             for a in e.get("abbreviations", []):
                 if re.search(rf"\b{re.escape(a['abbr'])}\b", d.text):  # only abbreviations the doc really uses
                     llm_abbr.setdefault(a["abbr"], set()).add(a["long"].strip().lower())

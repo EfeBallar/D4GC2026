@@ -13,10 +13,11 @@ ap.add_argument("--max-words", type=int, default=180)
 ap.add_argument("--exclude-ids", default="", help="comma-separated doc ids to leave out (base library for delta tests)")
 ap.add_argument("--transcriptions", default=str(ROOT / "data/transcriptions"), help="digitise.py output")
 ap.add_argument("--inbox", default=str(ROOT / "data/inbox"), help="photos that become Field Note docs once transcribed")
+ap.add_argument("--no-synthetic", action="store_true", help="index enrichment fields but no summary/Q&A passages (ablation)")
 ap.add_argument("--glossary", default=str(ROOT / "data/glossary.csv"), help="for topics from glossary hits")
 ap.add_argument("--enrichment", default=str(ROOT / "data/enrichment.jsonl"), help='hq_enrich.py output; "" to disable')
 a = ap.parse_args()
 build_index(a.data, a.csv, a.out, max_words=a.max_words,
             exclude_ids={x.strip() for x in a.exclude_ids.split(",") if x.strip()},
             transcriptions_dir=a.transcriptions, inbox_dir=a.inbox, enrichment_path=a.enrichment,
-            glossary_path=a.glossary)
+            glossary_path=a.glossary, synthetic=not a.no_synthetic)

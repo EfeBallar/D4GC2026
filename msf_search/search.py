@@ -71,7 +71,8 @@ class Concept:
 
 class Searcher:
     def __init__(self, index_path: str, glossary_path: str | None = None, dense=None,
-                 abbreviations_path: str | None = None, qvec=None, profiles_path: str | None = None):
+                 abbreviations_path: str | None = None, qvec=None, profiles_path: str | None = None,
+                 use_importance: bool = True):
         self.index_path = index_path
         self.con = sqlite3.connect(f"file:{index_path}?mode=ro", uri=True, check_same_thread=False)
         self.glossary = Glossary(glossary_path)
@@ -79,6 +80,7 @@ class Searcher:
             self.glossary.load_abbreviations(abbreviations_path)
         self.dense = dense
         self.qvec = qvec  # optional HyDE question vectors (qvec.py)
+        self.use_importance = use_importance  # off only for the ablation table
         self.profiles = {x["id"]: x for x in json.loads(Path(profiles_path).read_text(encoding="utf-8"))["profiles"]} \
             if profiles_path and Path(profiles_path).exists() else {}
         self._data_version = None
@@ -319,7 +321,8 @@ class Searcher:
             results = [r for r in results if r["confidence"] != "low"]
         prof = self.profiles.get(profile) if profile else None
         for r in results:  # importance prior and profile boost, after the gate (they reorder, never filter)
-            r["score"] = round(r["score"] * IMPORTANCE_PRIOR.get(self.docs[r["doc_id"]]["importance"], 1.0), 4)
+            if self.use_importance:
+                r["score"] = round(r["score"] * IMPORTANCE_PRIOR.get(self.docs[r["doc_id"]]["importance"], 1.0), 4)
             if prof:
                 r["profile_boost"] = self._profile_boost(prof, self.docs[r["doc_id"]])
                 r["score"] = round(r["score"] * (1 + r["profile_boost"]), 4)

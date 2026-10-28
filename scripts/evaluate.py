@@ -29,6 +29,7 @@ ap.add_argument("--abbrev", default=str(ROOT / "data/abbreviations.csv"), help='
 ap.add_argument("--n", type=int, default=300)
 ap.add_argument("--terms", type=int, default=3)
 ap.add_argument("--seed", type=int, default=7)
+ap.add_argument("--eval", default=None, help="hand-made eval set, e.g. data/eval_queries.csv")
 a = ap.parse_args()
 random.seed(a.seed)
 
@@ -78,4 +79,7 @@ res["off_topic_queries"] = len(OFF_TOPIC)
 res["off_topic_correctly_abstained"] = round(sum(r["abstained"] for r in off) / len(OFF_TOPIC), 3)
 res["off_topic_leaks"] = {r["query"]: [x["doc_id"] for x in r["results"][:3]] for r in off if not r["abstained"]}
 res["index_mb"] = s.report.get("index_mb")
+if a.eval:
+    from msf_search import evalset
+    res["eval_set"] = evalset.score(s, evalset.load(a.eval))
 print(json.dumps(res, indent=2, ensure_ascii=False))
