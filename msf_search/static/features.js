@@ -242,7 +242,6 @@
   }
 
   /* ---------- on-device chat (POST /api/chat, SSE stream) ---------- */
-  const CHAT_LABEL = "Answer generated on this device by a small offline AI model from MSF documents · check the sources";
   function renderSourceChips(sources) {
     return (sources || []).map(s => {
       const pdf = originalHref(s, s.page);
@@ -251,12 +250,49 @@
     }).join(" ");
   }
   window.MSFFeatures.renderSourceChips = renderSourceChips;
+  const LANGN = {en: "English", fr: "Français", es: "Español", ar: "العربية"};
+  function renderSourceCards(sources, mid) {
+    return `<ol class="fx-cards">${(sources || []).map(s => `<li id="fx-src-${mid}-${s.n}" class="fx-card" data-doc="${esc(s.doc_id)}"
+      data-chunk="${s.chunk_id}" data-href="${esc(/\.pdf$/i.test(s.original_name || "") ? originalHref(s, s.page) : "")}" tabindex="0">
+      <div><b>[${s.n}]</b> <span dir="auto">${esc(s.display_title || s.title)}</span></div>
+      <div class="fx-cardmeta"><span class="fx-b">${esc(s.type || s.genre || "")}</span> ${esc(LANGN[s.language] || s.language || "")}${s.year ? " · " + s.year : ""}${s.location ? " · " + esc(s.location) : ""}
+        <span class="fx-id">${esc(s.doc_id)}</span></div>
+      <div class="fx-quote" dir="auto">“${esc(s.quote || "")}”</div></li>`).join("")}</ol>`;
+  }
+  function linkCitations(text, sources, mid) {
+    const by = Object.fromEntries((sources || []).map(s => [String(s.n), s]));
+    return esc(text).replace(/\*\*([^*\n]+)\*\*/g, "<b>$1</b>").replace(/\[(\d+)\]/g, (m, n) => by[n]
+      ? `<a class="fx-cite" href="#fx-src-${mid}-${n}" title="${esc(by[n].display_title || by[n].title)}">[${n}]</a>` : m);
+  }
+  async function openPassage(docId, chunkId, quote) {
+    const d = await (await _fetch("/api/doc/" + encodeURIComponent(docId))).json();
+    const dlg = document.getElementById("dlg"), body = document.getElementById("dbody");
+    document.getElementById("dt").textContent = d.title + " (" + docId + ")";
+    const text = d.text || "", key = (quote || "").replace(/^“|”$/g, "").replace(/ \.\.\.$/, "").slice(0, 60);
+    const i = key ? text.indexOf(key) : -1;
+    body.dir = "auto";
+    body.innerHTML = i < 0 ? esc(text) : esc(text.slice(0, i)) + "<mark id='fx-hit'>" + esc(text.slice(i, i + key.length)) + "</mark>" + esc(text.slice(i + key.length));
+    dlg.showModal();
+    const hit = document.getElementById("fx-hit"); if (hit) hit.scrollIntoView({block: "center"});
+  }
+  document.addEventListener("click", e => {
+    const card = e.target.closest(".fx-card");
+    if (card) {
+      if (card.dataset.href) window.open(card.dataset.href, "_blank");
+      else openPassage(card.dataset.doc, card.dataset.chunk, card.querySelector(".fx-quote").textContent);
+    }
+  });
+  Object.assign(window.MSFFeatures, {renderSourceCards, linkCitations});
   const chatCss = `.fx-chatbtn{position:fixed;right:16px;bottom:16px;z-index:5;background:var(--red);color:#fff;border:0;border-radius:999px;padding:12px 18px;font-weight:700;box-shadow:0 2px 8px #0003}
   .fx-chat{position:fixed;right:16px;bottom:70px;width:min(440px,calc(100vw - 32px));max-height:72vh;display:none;flex-direction:column;z-index:6;background:var(--card);border:1px solid var(--line);border-radius:14px;box-shadow:0 6px 24px #0004}
   .fx-chat.on{display:flex}.fx-chat header{padding:10px 14px;border-bottom:1px solid var(--line);display:flex;gap:8px;align-items:center}
   .fx-msgs{overflow:auto;padding:10px 12px;flex:1}.fx-u,.fx-bot{margin:8px 0;padding:9px 12px;border-radius:12px;font-size:14.5px;white-space:pre-wrap}
   .fx-u{background:var(--ink);color:var(--bg);margin-left:40px}.fx-bot{background:var(--bg);border:1px solid var(--line);margin-right:20px}
   .fx-meta{font-size:11.5px;color:var(--mute);margin-top:6px;white-space:normal}.fx-warn{color:var(--mid)}
+  .fx-cards{margin:8px 0 0;padding:0;list-style:none;white-space:normal}.fx-card{border:1px solid var(--line);border-radius:10px;padding:7px 9px;margin:6px 0;cursor:pointer;background:var(--card);font-size:13.5px}
+  .fx-card:hover,.fx-card:target{border-color:var(--red)}.fx-cardmeta{font-size:12px;color:var(--mute);margin:3px 0}
+  .fx-id{float:right;font-size:11px;color:var(--mute);opacity:.7}.fx-quote{font-size:12.5px;color:var(--mute);font-style:italic}
+  .fx-cite{color:var(--red);font-weight:700;text-decoration:none}.fx-top{font-size:11.5px;font-weight:600;color:var(--red);margin-bottom:6px;white-space:normal}
   .fx-chat form{display:flex;gap:6px;padding:10px;border-top:1px solid var(--line)}.fx-chat input{flex:1;min-width:0;padding:9px 11px;border-radius:10px;border:1px solid var(--line);background:var(--card);color:var(--ink)}`;
   const st2 = document.createElement("style"); st2.textContent = chatCss; document.head.appendChild(st2);
   const btn = document.createElement("button"); btn.className = "fx-chatbtn"; btn.textContent = "Ask (offline AI)";
@@ -279,7 +315,8 @@
     const msgs = document.getElementById("fx-msgs");
     msgs.insertAdjacentHTML("beforeend", `<div class="fx-u" dir="auto">${esc(q)}</div>`);
     const bot = document.createElement("div"); bot.className = "fx-bot"; bot.dir = "auto";
-    bot.innerHTML = `<span class="fx-ans">…</span>`; msgs.appendChild(bot); msgs.scrollTop = msgs.scrollHeight;
+    const mid = "m" + Date.now();
+    bot.innerHTML = `<div class="fx-top"></div><span class="fx-ans">…</span>`; msgs.appendChild(bot); msgs.scrollTop = msgs.scrollHeight;
     const ans = bot.querySelector(".fx-ans");
     let text = "", meta = {}, done = {};
     try {
@@ -297,7 +334,8 @@
           if (line.startsWith("event:")) ev = line.slice(6).trim();
           else if (line.startsWith("data:")) {
             const d = JSON.parse(line.slice(5));
-            if (ev === "meta") meta = d;
+            if (ev === "meta") { meta = d; if (d.llm_called) bot.querySelector(".fx-top").textContent =
+              `AI answer generated on this device by a small offline model (${d.model_label || d.model}) from MSF documents · check the sources`; }
             else if (ev === "token") { text += d.text; ans.textContent = text; msgs.scrollTop = msgs.scrollHeight; }
             else if (ev === "done") done = d;
             else if (ev === "error") ans.textContent = text + "\n" + d.error;
@@ -308,9 +346,12 @@
     HISTORY.push({role: "user", content: q}, {role: "assistant", content: text});
     const warn = (done.unsupported_terms || []).length
       ? `<div class="fx-meta fx-warn">Words not found in the sources: ${done.unsupported_terms.map(esc).join(", ")}: check before acting.</div>` : "";
+    if (done.llm_called) {
+      ans.innerHTML = linkCitations(text, meta.sources, mid);
+      bot.querySelector(".fx-top").textContent += ` · ${(done.total_ms / 1000).toFixed(1)} s`;
+    }
     bot.insertAdjacentHTML("beforeend", done.llm_called
-      ? `<div class="fx-meta"><b class="fx-lab" style="display:inline">${CHAT_LABEL}</b></div>
-         <div class="fx-meta">${renderSourceChips(meta.sources)}</div>${warn}
+      ? `${warn}<div class="fx-meta">Sources</div>${renderSourceCards(meta.sources, mid)}
          <div class="fx-meta">${esc(done.model)} · first token ${done.ttft_ms} ms · total ${(done.total_ms / 1000).toFixed(1)} s · retrieval ${meta.retrieval_ms} ms</div>`
       : `<div class="fx-meta">The library has no reliable match, so the AI was not asked (${done.total_ms} ms).</div>`);
   };

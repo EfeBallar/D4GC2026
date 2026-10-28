@@ -114,3 +114,18 @@ Static assets. `/static/features.js` holds the UI rendering helpers (pure functi
 
 Ranking notes: confidence (coverage) first; inside a confidence level, score × evidence tier × importance
 prior (importance applied after the gate). Every doc appears once; summary/Q&A passages count for their doc.
+
+## POST /api/chat (on-device RAG, Server-Sent Events)
+Body `{"question": "...", "history": [{"role": "user"|"assistant", "content": "..."}]}`. Runs the strict search
+first; if it abstains the LLM is NOT called. Stream of events:
+- `meta`: `{"sources": [card...], "model": "mistral-field", "model_label": "mistral 7B, 4-bit", "llm_called": true,
+  "retrieval_ms": 44}`. A source card: `{"n", "doc_id", "chunk_id", "title", "display_title", "type", "genre",
+  "language", "year", "heading", "page", "location" ("p. 59" | section), "quote" (one line of the passage used),
+  "original_name", "tier", "confidence", "provenance"}`
+- `token`: `{"text": "..."}` (repeated; answer cites sources as [1], [2])
+- `error`: `{"error": "..."}` if the local model is unreachable (search keeps working)
+- `done`: `{"llm_called", "ttft_ms", "total_ms", "tokens", "model", "unsupported_terms"}`. unsupported_terms =
+  numbers / rare terms in the answer that are not in the passages (show as a warning)
+Refusal (abstain): one token "Not found in the MSF library. Not found anywhere: <terms>." and `llm_called: false`.
+UI label (required): "AI answer generated on this device by a small offline model (<model_label>) from MSF
+documents · check the sources". features.js: `renderSourceCards(sources, id)`, `linkCitations(text, sources, id)`.

@@ -65,6 +65,7 @@ def make_handler(searcher: Searcher, originals: list[Path], llm_model: str | Non
                 return self._sse("done", {"llm_called": False, "ttft_ms": None,
                                           "total_ms": round((time.perf_counter() - t0) * 1000), "model": None})
             self._sse("meta", {"sources": ctx["sources"], "model": cfg["model"], "llm_called": True,
+                               "model_label": chat.MODEL_LABEL,
                                "retrieval_ms": round((time.perf_counter() - t0) * 1000)})
             ttft, n, answer = None, 0, ""
             try:
@@ -77,7 +78,7 @@ def make_handler(searcher: Searcher, originals: list[Path], llm_model: str | Non
             except OSError as e:
                 self._sse("error", {"error": f"local model not reachable ({e}); search still works"})
             self._sse("done", {"llm_called": True, "ttft_ms": ttft, "tokens": n, "model": cfg["model"],
-                               "unsupported_terms": chat.unsupported_terms(answer, ctx["context"], question),
+                               "unsupported_terms": chat.unsupported_terms(answer, ctx["context"], question, searcher),
                                "total_ms": round((time.perf_counter() - t0) * 1000)})
 
         def do_GET(self):
