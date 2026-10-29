@@ -1,3 +1,4 @@
+# Awarded Best Strategy at Emergent Leuven’s Data 4 Good Challenge!
 # MSF Field Library
 
 **Medical knowledge, available offline.**
